@@ -59,11 +59,43 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
   // Append layout components to screen
   appendLayoutToScreen(screen, layout);
 
+  // Read and render markdown content for preview
+  let markdownContent = '';
+  let currentTheme = getThemeForConfig(config.trueColor);
+
+  try {
+    // Check if file exists and is a file
+    if (!fs.existsSync(fileOrDir)) {
+      layout.preview.setContent(`Error: File not found: ${fileOrDir}`);
+    } else {
+      const stat = fs.statSync(fileOrDir);
+      if (!stat.isFile()) {
+        layout.preview.setContent(`Error: ${fileOrDir} is not a file`);
+      } else {
+        // Read markdown content
+        markdownContent = fs.readFileSync(fileOrDir, 'utf-8');
+
+        // Initial render at current terminal width
+        const width = process.stdout.columns || 80;
+        const rendered = render(markdownContent, width, currentTheme);
+        layout.preview.setContent(rendered);
+      }
+    }
+  } catch (error) {
+    layout.preview.setContent(`Error reading file: ${(error as Error).message}`);
+  }
+
   // Set up input handling and keybindings
   setupInput(screen, layout);
 
-  // Handle resize
+  // Handle resize with content reflow
   screen.on('resize', function() {
+    // Re-render content at new terminal width
+    if (markdownContent) {
+      const newWidth = process.stdout.columns || 80;
+      const rendered = render(markdownContent, newWidth, currentTheme);
+      layout.preview.setContent(rendered);
+    }
     screen.render();
   });
 
