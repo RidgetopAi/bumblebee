@@ -1,6 +1,6 @@
 import blessed from 'neo-blessed';
 import { BumblebeeConfig } from './config/loadConfig.js';
-import { bumblebeeTheme } from './config/theme-bumblebee.js';
+import { createLayout, appendLayoutToScreen } from './tui/layout.js';
 
 // Cast blessed to any to avoid TypeScript issues
 const blessedAny = blessed as any;
@@ -19,56 +19,11 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
     fullUnicode: true,
   });
 
-  // Create title bar
-  const titleBar = blessedAny.box({
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: 3,
-    content: '{center}Bumblebee{/center}',
-    tags: true,
-    style: {
-      bg: bumblebeeTheme.current.nearBlack,
-      fg: bumblebeeTheme.current.yellowB,
-    },
-  });
+  // Create modular TUI layout
+  const layout = createLayout(fileOrDir);
 
-  // Create preview pane (empty for Phase 0)
-  const preview = blessedAny.box({
-    top: 3,
-    left: 0,
-    width: '100%',
-    height: '100%-6',
-    content: '', // Empty for Phase 0
-    scrollable: true,
-    alwaysScroll: true,
-    mouse: true,
-    keys: true,
-  });
-
-  // Create status bar
-  const statusBar = blessedAny.box({
-    bottom: 0,
-    left: 0,
-    width: '100%',
-    height: 3,
-    content: ` ${fileOrDir} `,
-    style: {
-      bg: bumblebeeTheme.current.nearBlack,
-      fg: bumblebeeTheme.current.yellowB,
-      border: {
-        fg: bumblebeeTheme.current.yellowB,
-      },
-    },
-    border: {
-      type: 'line',
-    },
-  });
-
-  // Append elements to screen
-  screen.append(titleBar);
-  screen.append(preview);
-  screen.append(statusBar);
+  // Append layout components to screen
+  appendLayoutToScreen(screen, layout);
 
   // Handle key events
   screen.key(['escape', 'q', 'C-c'], function(ch: string, key: any) {
