@@ -101,5 +101,31 @@ export function cyan(text: string): string {
   return colorize(text, 'cyan');
 }
 
+// Get theme with specific trueColor setting
+export function getThemeForConfig(trueColor: 'auto' | 'on' | 'off'): BumblebeeTheme {
+  const colorSupport = trueColor === 'auto' ? detectColorSupport() :
+                     trueColor === 'on' ? 'truecolor' : '256';
+
+  function getCurrentPalette(): BumblebeePalette {
+    switch (colorSupport) {
+      case 'truecolor':
+        return TRUE_COLOR_PALETTE;
+      case '256':
+        return ANSI256_PALETTE;
+      case '16':
+      default:
+        return ANSI256_PALETTE;
+    }
+  }
+
+  return {
+    trueColor: TRUE_COLOR_PALETTE,
+    ansi256: ANSI256_PALETTE,
+    get current() {
+      return getCurrentPalette();
+    },
+  };
+}
+
 // Export the theme as default
 export default bumblebeeTheme;

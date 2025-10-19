@@ -1,15 +1,48 @@
 import blessed from 'neo-blessed';
+import fs from 'fs';
 import { BumblebeeConfig } from './config/loadConfig.js';
 import { createLayout, appendLayoutToScreen } from './tui/layout.js';
+import { render } from './render/mdastToAnsi.js';
+import { getThemeForConfig } from './config/theme-bumblebee.js';
 
 // Cast blessed to any to avoid TypeScript issues
 const blessedAny = blessed as any;
 
 export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout: boolean): Promise<void> {
-  // For Phase 0, --stdout is not implemented yet, just show a placeholder
   if (stdout) {
-    console.log('STDOUT mode not implemented yet. Use TUI mode.');
-    return;
+    // STDOUT mode: render markdown file to stdout
+    try {
+      // Check if file exists and is a file
+      if (!fs.existsSync(fileOrDir)) {
+        console.error(`Error: File not found: ${fileOrDir}`);
+        process.exit(1);
+      }
+
+      const stat = fs.statSync(fileOrDir);
+      if (!stat.isFile()) {
+        console.error(`Error: ${fileOrDir} is not a file`);
+        process.exit(1);
+      }
+
+      // Read markdown content
+      const markdown = fs.readFileSync(fileOrDir, 'utf-8');
+
+      // Get terminal width, default to 80
+      const width = process.stdout.columns || 80;
+
+      // Get theme based on config
+      const theme = getThemeForConfig(config.trueColor);
+
+      // Render markdown to ANSI
+      const output = render(markdown, width, theme);
+
+      // Output to stdout
+      console.log(output);
+      return;
+    } catch (error) {
+      console.error(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
   }
 
   // Create screen
