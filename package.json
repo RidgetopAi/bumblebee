@@ -1,0 +1,23 @@
+{
+  "name": "bumblebee",
+  "version": "1.0.0",
+  "description": "CLI Markdown Viewer & Editor - Neovim-style terminal application",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run src/cli.ts",
+    "build": "bun build --target bun --outdir dist src/cli.ts",
+    "dev:node": "node src/cli.ts",
+    "build:node": "npx tsc && chmod +x dist/cli.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RidgetopAi/bumblebee.git"
+  },
+  "keywords": ["markdown", "cli", "viewer", "editor", "terminal"],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/RidgetopAi/bumblebee/issues"
+  },
+  "homepage": "https://github.com/RidgetopAi/bumblebee#readme"
+}
