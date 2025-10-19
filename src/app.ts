@@ -2,6 +2,7 @@ import blessed from 'neo-blessed';
 import fs from 'fs';
 import { BumblebeeConfig } from './config/loadConfig.js';
 import { createLayout, appendLayoutToScreen } from './tui/layout.js';
+import { setupInput } from './tui/input.js';
 import { render } from './render/mdastToAnsi.js';
 import { getThemeForConfig } from './config/theme-bumblebee.js';
 
@@ -58,10 +59,8 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
   // Append layout components to screen
   appendLayoutToScreen(screen, layout);
 
-  // Handle key events
-  screen.key(['escape', 'q', 'C-c'], function(ch: string, key: any) {
-    return process.exit(0);
-  });
+  // Set up input handling and keybindings
+  setupInput(screen, layout);
 
   // Handle resize
   screen.on('resize', function() {
