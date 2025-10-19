@@ -42,5 +42,10 @@
     "strip-ansi": "^7.1.2",
     "table": "^6.9.0",
     "wrap-ansi": "^9.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.8.1",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
   }
 }
