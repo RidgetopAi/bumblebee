@@ -1,17 +1,28 @@
 import { spawn } from 'child_process';
+import fs from 'fs';
 import { BumblebeeConfig } from '../config/loadConfig.js';
 
 /**
  * Spawn an external editor for the given file path
  * Suspends the TUI, opens file in $EDITOR (default nvim), then restores TUI
+ * Detects if file content changed after editing for conditional re-rendering
  *
  * @param filePath - Path to the file to edit
  * @param config - Bumblebee configuration containing editor setting
  * @param screen - Blessed screen instance for TUI management
- * @returns Promise that resolves when editor exits
+ * @returns Promise that resolves to true if file changed, false if unchanged
  */
-export async function spawnEditor(filePath: string, config: BumblebeeConfig, screen: any): Promise<void> {
-  return new Promise<void>((resolve, reject) => {
+export async function spawnEditor(filePath: string, config: BumblebeeConfig, screen: any): Promise<boolean> {
+  return new Promise<boolean>((resolve, reject) => {
+    // Read file content before editing for change detection
+    let originalContent: string;
+    try {
+      originalContent = fs.readFileSync(filePath, 'utf-8');
+    } catch (error) {
+      reject(new Error(`Failed to read file before editing: ${(error as Error).message}`));
+      return;
+    }
+
     // Get editor from config or environment, default to nvim
     const editor = config.editor || process.env.EDITOR || 'nvim';
 
@@ -32,9 +43,20 @@ export async function spawnEditor(filePath: string, config: BumblebeeConfig, scr
 
       // Handle process completion
       editorProcess.on('close', (code: number) => {
-        // Editor exited, resolve the promise
-        // Note: TUI restoration will be handled by caller (TB010-4)
-        resolve();
+        try {
+          // Read file content after editing
+          const newContent = fs.readFileSync(filePath, 'utf-8');
+
+          // Compare contents to detect changes
+          const hasChanged = newContent !== originalContent;
+
+          // Resolve with change detection result
+          // Note: TUI restoration will be handled by caller (TB010-4)
+          resolve(hasChanged);
+        } catch (error) {
+          // If we can't read the file after editing, assume it changed (safe default)
+          resolve(true);
+        }
       });
 
       // Handle spawn errors (editor not found, etc.)

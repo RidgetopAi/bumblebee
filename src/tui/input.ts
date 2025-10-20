@@ -1,3 +1,4 @@
+import fs from 'fs';
 import { bumblebeeTheme } from '../config/theme-bumblebee.js';
 import { Layout, showExplorerPane, hideExplorerPane, updateLayoutOnResize, focusExplorerPane, focusPreviewPane } from './layout.js';
 import { type ExplorerState, moveSelection, handleEnter, toggleExplorer, renderExplorer, getSelectedPath } from './panes/explorer.js';
@@ -152,10 +153,22 @@ export function setupInput(
         const currentFilePath = restoreState.currentFilePath;
 
         // Suspend TUI and spawn editor
-        await spawnEditor(currentFilePath, config, screen);
+        const fileChanged = await spawnEditor(currentFilePath, config, screen);
 
         // Editor exited - restore TUI
         const { screen: newScreen, layout: newLayout } = await restoreTui(restoreState);
+
+        // Conditionally re-render if file changed (TB011-4)
+        if (fileChanged) {
+          // Re-read the file content
+          const newContent = fs.readFileSync(currentFilePath, 'utf-8');
+
+          // Update the restoreState with new content (this will trigger re-render)
+          restoreState.markdownContent = newContent;
+
+          // Note: Full re-render integration will be completed in TB012-4
+          console.log('File changed - content updated for re-rendering');
+        }
 
         // Update references (this is a temporary implementation for TB010-4 testing)
         // In production, this would be handled by the app.ts level
