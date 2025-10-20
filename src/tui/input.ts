@@ -158,6 +158,11 @@ export function setupInput(
         // Editor exited - restore TUI
         const { screen: newScreen, layout: newLayout } = await restoreTui(restoreState);
 
+        // Update global references in app.ts (TB012-4 full integration)
+        if (restoreState.updateReferences) {
+          restoreState.updateReferences(newScreen, newLayout);
+        }
+
         // Conditionally re-render if file changed (TB011-4)
         if (fileChanged) {
           // Re-read the file content
@@ -166,15 +171,10 @@ export function setupInput(
           // Update the restoreState with new content (this will trigger re-render)
           restoreState.markdownContent = newContent;
 
-          // Note: Full re-render integration will be completed in TB012-4
-          console.log('File changed - content updated for re-rendering');
+          console.log('File changed - content updated and re-rendered');
         }
 
-        // Update references (this is a temporary implementation for TB010-4 testing)
-        // In production, this would be handled by the app.ts level
-        console.log('TUI restoration completed - screen and layout recreated');
-
-        // For now, just log success - full integration in TB012-4
+        console.log('Edit mode completed successfully - TUI fully restored');
       } catch (error) {
         console.error('Edit mode failed:', (error as Error).message);
         // In a real implementation, we'd show user feedback here

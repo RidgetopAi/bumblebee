@@ -20,6 +20,7 @@ export interface TuiRestoreState {
   currentTheme: BumblebeeTheme;
   handleFileOpen: (filePath: string) => void;
   updateFileWatcher: (directory: string, explorerState: ExplorerState, layout: any, config: BumblebeeConfig, screen: any) => void;
+  updateReferences?: (newScreen: any, newLayout: any) => void;
 }
 
 /**

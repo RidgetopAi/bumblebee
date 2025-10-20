@@ -128,7 +128,7 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
   }
 
   // Create screen
-  const screen = blessedAny.screen({
+  let screen = blessedAny.screen({
     smartCSR: true,
     title: 'Bumblebee',
     fullUnicode: true,
@@ -136,7 +136,7 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
   });
 
   // Create modular TUI layout
-  const layout = createLayout(fileOrDir);
+  let layout = createLayout(fileOrDir);
 
   // Determine explorer root: use parent directory if a file was passed
   let explorerRoot = fileOrDir;
@@ -234,6 +234,11 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
     currentTheme,
     handleFileOpen,
     updateFileWatcher,
+    updateReferences: (newScreen: any, newLayout: any) => {
+      // Update global references after TUI restoration (TB012-4)
+      screen = newScreen;
+      layout = newLayout;
+    },
   };
 
   // Set up input handling and keybindings

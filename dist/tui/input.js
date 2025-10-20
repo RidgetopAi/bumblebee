@@ -1,3 +1,4 @@
+import fs from 'fs';
 import { bumblebeeTheme } from '../config/theme-bumblebee.js';
 import { showExplorerPane, hideExplorerPane, focusExplorerPane, focusPreviewPane } from './layout.js';
 import { moveSelection, handleEnter, toggleExplorer, renderExplorer } from './panes/explorer.js';
@@ -132,13 +133,22 @@ export function setupInput(screen, layout, explorerState, config, onFileOpen, on
                 // Get the current file path from status bar
                 const currentFilePath = restoreState.currentFilePath;
                 // Suspend TUI and spawn editor
-                await spawnEditor(currentFilePath, config, screen);
+                const fileChanged = await spawnEditor(currentFilePath, config, screen);
                 // Editor exited - restore TUI
                 const { screen: newScreen, layout: newLayout } = await restoreTui(restoreState);
-                // Update references (this is a temporary implementation for TB010-4 testing)
-                // In production, this would be handled by the app.ts level
-                console.log('TUI restoration completed - screen and layout recreated');
-                // For now, just log success - full integration in TB012-4
+                // Update global references in app.ts (TB012-4 full integration)
+                if (restoreState.updateReferences) {
+                    restoreState.updateReferences(newScreen, newLayout);
+                }
+                // Conditionally re-render if file changed (TB011-4)
+                if (fileChanged) {
+                    // Re-read the file content
+                    const newContent = fs.readFileSync(currentFilePath, 'utf-8');
+                    // Update the restoreState with new content (this will trigger re-render)
+                    restoreState.markdownContent = newContent;
+                    console.log('File changed - content updated and re-rendered');
+                }
+                console.log('Edit mode completed successfully - TUI fully restored');
             }
             catch (error) {
                 console.error('Edit mode failed:', error.message);

@@ -111,14 +111,14 @@ export async function runApp(config, fileOrDir, stdout) {
         }
     }
     // Create screen
-    const screen = blessedAny.screen({
+    let screen = blessedAny.screen({
         smartCSR: true,
         title: 'Bumblebee',
         fullUnicode: true,
         terminal: 'xterm-256color', // Force xterm compatibility to avoid tmux/screen parsing errors
     });
     // Create modular TUI layout
-    const layout = createLayout(fileOrDir);
+    let layout = createLayout(fileOrDir);
     // Determine explorer root: use parent directory if a file was passed
     let explorerRoot = fileOrDir;
     const stat = fs.statSync(fileOrDir);
@@ -205,6 +205,11 @@ export async function runApp(config, fileOrDir, stdout) {
         currentTheme,
         handleFileOpen,
         updateFileWatcher,
+        updateReferences: (newScreen, newLayout) => {
+            // Update global references after TUI restoration (TB012-4)
+            screen = newScreen;
+            layout = newLayout;
+        },
     };
     // Set up input handling and keybindings
     setupInput(screen, layout, explorerState, config, handleFileOpen, updateFileWatcher, restoreState);
