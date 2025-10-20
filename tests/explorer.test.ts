@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createExplorerState, moveSelection, handleEnter, toggleExplorer, renderExplorer, getSelectedPath, getSelectedNode } from '../src/tui/panes/explorer.js';
+import { createExplorerState, moveSelection, handleEnter, toggleExplorer, renderExplorer, getSelectedPath, getSelectedNode, refreshExplorer } from '../src/tui/panes/explorer.js';
 import { BumblebeeConfig } from '../src/config/loadConfig.js';
 import path from 'path';
 
@@ -235,6 +235,42 @@ describe('Explorer Pane', () => {
       const result = handleEnter(state, defaultConfig);
       expect(result).toBeNull(); // Directory navigation returns null
       // Note: Focus stays in explorer pane (no auto-focus switch)
+    });
+  });
+
+  describe('refreshExplorer', () => {
+    it('should refresh explorer state and maintain selection bounds', () => {
+      const state = createExplorerState(testDir, defaultConfig);
+      const originalTree = state.tree;
+      const originalFlattenedLength = state.flattened.length;
+
+      // Set selection near the end
+      state.selectedIndex = Math.min(state.flattened.length - 1, 5);
+
+      // Refresh explorer
+      refreshExplorer(state, defaultConfig);
+
+      // Tree should be refreshed
+      expect(state.tree).not.toBe(originalTree);
+      expect(Array.isArray(state.flattened)).toBe(true);
+      expect(state.flattened.length).toBeGreaterThan(0);
+
+      // Selection should be valid (within bounds)
+      expect(state.selectedIndex).toBeLessThan(state.flattened.length);
+      expect(state.selectedIndex).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should add parent directory entry when not at root', () => {
+      // Create state in subdirectory
+      const subdirPath = path.join(testDir, 'subdir');
+      const state = createExplorerState(subdirPath, defaultConfig);
+
+      // Refresh explorer
+      refreshExplorer(state, defaultConfig);
+
+      // Should have parent directory entry
+      expect(state.flattened.length).toBeGreaterThan(0);
+      expect(state.flattened[0]).toMatch(/\.\.$/);
     });
   });
 });

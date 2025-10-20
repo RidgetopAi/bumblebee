@@ -1,14 +1,91 @@
 import blessed from 'neo-blessed';
 import fs from 'fs';
+import chokidar from 'chokidar';
 import { BumblebeeConfig } from './config/loadConfig.js';
-import { createLayout, appendLayoutToScreen, updateLayoutOnResize } from './tui/layout.js';
+import { createLayout, appendLayoutToScreen, updateLayoutOnResize, type Layout } from './tui/layout.js';
 import { setupInput } from './tui/input.js';
 import { render } from './render/mdastToAnsi.js';
 import { getThemeForConfig } from './config/theme-bumblebee.js';
-import { createExplorerState, renderExplorer, isExplorerVisible, type ExplorerState } from './tui/panes/explorer.js';
+import { createExplorerState, renderExplorer, isExplorerVisible, refreshExplorer, type ExplorerState } from './tui/panes/explorer.js';
 
 // Cast blessed to any to avoid TypeScript issues
 const blessedAny = blessed as any;
+
+// File watcher instance for explorer auto-refresh
+let fileWatcher: any = null;
+
+/**
+ * Set up file watching for explorer auto-refresh
+ */
+function setupFileWatcher(directory: string, explorerState: ExplorerState, layout: Layout, config: BumblebeeConfig, screen: any): void {
+  // Close existing watcher
+  if (fileWatcher) {
+    fileWatcher.close();
+  }
+
+  try {
+    // Create new watcher with performance-optimized options
+    fileWatcher = chokidar.watch(directory, {
+      ignored: config.showDotfiles ? [] : (path: string) => path.includes('/.') || path.includes('\\.'), // Respect dotfile config
+      persistent: true,
+      ignoreInitial: true,
+      awaitWriteFinish: {
+        stabilityThreshold: 100, // Wait 100ms after last change
+        pollInterval: 50
+      },
+      ignorePermissionErrors: true, // Handle permission issues gracefully
+    });
+
+    // Debounced refresh to group rapid changes (e.g., during git operations)
+    let refreshTimeout: NodeJS.Timeout | null = null;
+    const debouncedRefresh = () => {
+      if (refreshTimeout) clearTimeout(refreshTimeout);
+      refreshTimeout = setTimeout(() => {
+        try {
+          // Only refresh if explorer is visible and watching the right directory
+          if (explorerState.visible && directory === explorerState.rootPath) {
+            refreshExplorer(explorerState, config);
+
+            // Update the UI
+            const height = layout.explorer.height || 20;
+            const width = layout.explorer.width || config.explorerWidth;
+            const content = renderExplorer(explorerState, config, height, width);
+            layout.explorer.content = content;
+
+            screen.render();
+          }
+        } catch (error) {
+          // Log but don't crash on refresh errors
+          console.warn('Explorer refresh failed:', (error as Error).message);
+        }
+      }, 300); // 300ms debounce delay
+    };
+
+    // Watch for all relevant filesystem events
+    fileWatcher.on('all', (event, path) => {
+      // Only respond to changes in the current explorer directory
+      if (path.startsWith(directory)) {
+        debouncedRefresh();
+      }
+    });
+
+    // Handle watcher errors gracefully
+    fileWatcher.on('error', (error) => {
+      console.warn('File watcher error:', error.message);
+    });
+
+  } catch (error) {
+    // Continue without file watching if setup fails
+    console.warn('Failed to setup file watching:', (error as Error).message);
+  }
+}
+
+/**
+ * Update file watcher when directory changes
+ */
+function updateFileWatcher(directory: string, explorerState: ExplorerState, layout: Layout, config: BumblebeeConfig, screen: any): void {
+  setupFileWatcher(directory, explorerState, layout, config, screen);
+}
 
 export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout: boolean): Promise<void> {
   if (stdout) {
@@ -60,6 +137,9 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
 
   // Initialize explorer state
   const explorerState = createExplorerState(fileOrDir, config);
+
+  // Set up file watching for explorer auto-refresh
+  setupFileWatcher(fileOrDir, explorerState, layout, config, screen);
 
   // Append layout components to screen
   appendLayoutToScreen(screen, layout);
@@ -136,7 +216,14 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
   };
 
   // Set up input handling and keybindings
-  setupInput(screen, layout, explorerState, config, handleFileOpen);
+  setupInput(screen, layout, explorerState, config, handleFileOpen, updateFileWatcher);
+
+  // Clean up file watcher on exit
+  process.on('exit', () => {
+    if (fileWatcher) {
+      fileWatcher.close();
+    }
+  });
 
   // Handle resize with content reflow
   screen.on('resize', function() {

@@ -22,7 +22,8 @@ export function setupInput(
   layout: Layout,
   explorerState: ExplorerState,
   config: BumblebeeConfig,
-  onFileOpen?: (filePath: string) => void
+  onFileOpen?: (filePath: string) => void,
+  onDirectoryChange?: (directory: string, explorerState: ExplorerState, layout: Layout, config: BumblebeeConfig, screen: any) => void
 ): void {
   let currentMode = Mode.Normal;
   let explorerFocused = false;
@@ -118,6 +119,7 @@ export function setupInput(
   // Enter key for explorer actions
   screen.key('enter', () => {
     if (explorerState.visible && currentMode === Mode.Normal) {
+      const oldRootPath = explorerState.rootPath; // Track if directory changed
       const filePath = handleEnter(explorerState, config);
       if (filePath && onFileOpen) {
         // File opened - switch focus to preview (auto-focus behavior)
@@ -126,8 +128,12 @@ export function setupInput(
         previewFocused = true;
         onFileOpen(filePath);
       } else {
-        // Directory navigated - keep focus in explorer
+        // Directory navigated - keep focus in explorer and update watcher
         updateExplorerContent(layout, explorerState, config);
+        // Update file watcher if directory changed
+        if (explorerState.rootPath !== oldRootPath && onDirectoryChange) {
+          onDirectoryChange(explorerState.rootPath, explorerState, layout, config, screen);
+        }
       }
       updateBorders(screen, layout, currentMode, explorerFocused, previewFocused);
       screen.render();
