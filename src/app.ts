@@ -51,6 +51,7 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
     smartCSR: true,
     title: 'Bumblebee',
     fullUnicode: true,
+    terminal: 'xterm-256color', // Force xterm compatibility to avoid tmux/screen parsing errors
   });
 
   // Create modular TUI layout
