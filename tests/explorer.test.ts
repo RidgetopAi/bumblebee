@@ -207,4 +207,34 @@ describe('Explorer Pane', () => {
       expect(state.rootPath).toBe(testDir);
     });
   });
+
+  describe('auto-focus behavior', () => {
+    it('should return file path when file is selected (triggers auto-focus)', () => {
+      const state = createExplorerState(testDir, defaultConfig);
+
+      // Find a file in the flattened list
+      const fileIndex = state.flattened.findIndex(path => path.endsWith('file1.txt'));
+      expect(fileIndex).toBeGreaterThan(-1);
+
+      state.selectedIndex = fileIndex;
+
+      const result = handleEnter(state, defaultConfig);
+      expect(result).toBe(state.flattened[fileIndex]); // File opening returns file path
+      // Note: Focus switching to preview pane is handled by input system
+    });
+
+    it('should return null when directory is selected (keeps focus in explorer)', () => {
+      const state = createExplorerState(testDir, defaultConfig);
+
+      // Select a directory
+      const dirIndex = state.flattened.findIndex(path => path.endsWith('subdir'));
+      expect(dirIndex).toBeGreaterThan(-1);
+
+      state.selectedIndex = dirIndex;
+
+      const result = handleEnter(state, defaultConfig);
+      expect(result).toBeNull(); // Directory navigation returns null
+      // Note: Focus stays in explorer pane (no auto-focus switch)
+    });
+  });
 });

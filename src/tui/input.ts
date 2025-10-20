@@ -1,5 +1,5 @@
 import { bumblebeeTheme } from '../config/theme-bumblebee.js';
-import { Layout, showExplorerPane, hideExplorerPane, updateLayoutOnResize } from './layout.js';
+import { Layout, showExplorerPane, hideExplorerPane, updateLayoutOnResize, focusExplorerPane, focusPreviewPane } from './layout.js';
 import { type ExplorerState, moveSelection, handleEnter, toggleExplorer, renderExplorer, getSelectedPath } from './panes/explorer.js';
 import { BumblebeeConfig } from '../config/loadConfig.js';
 
@@ -26,21 +26,23 @@ export function setupInput(
 ): void {
   let currentMode = Mode.Normal;
   let explorerFocused = false;
+  let previewFocused = false;
 
   // Set initial border colors (all normal borders)
-  updateBorders(screen, layout, currentMode, explorerFocused);
+  updateBorders(screen, layout, currentMode, explorerFocused, previewFocused);
 
   // Mode switching keybindings
   screen.key('r', () => {
     currentMode = Mode.Render;
-    layout.preview.focus();
+    focusPreviewPane(layout);
     explorerFocused = false;
-    updateBorders(screen, layout, currentMode, explorerFocused);
+    previewFocused = true;
+    updateBorders(screen, layout, currentMode, explorerFocused, previewFocused);
   });
 
   screen.key('escape', () => {
     currentMode = Mode.Normal;
-    updateBorders(screen, layout, currentMode, explorerFocused);
+    updateBorders(screen, layout, currentMode, explorerFocused, previewFocused);
   });
 
   // Quit keybindings
@@ -97,15 +99,17 @@ export function setupInput(
 
       if (explorerState.visible) {
         showExplorerPane(layout, config.explorerWidth);
-        layout.explorer.focus();
+        focusExplorerPane(layout);
         explorerFocused = true;
+        previewFocused = false;
       } else {
         hideExplorerPane(layout);
-        layout.preview.focus();
+        focusPreviewPane(layout);
         explorerFocused = false;
+        previewFocused = true;
       }
 
-      updateBorders(screen, layout, currentMode, explorerFocused);
+      updateBorders(screen, layout, currentMode, explorerFocused, previewFocused);
       updateExplorerContent(layout, explorerState, config);
       screen.render();
     }
@@ -116,26 +120,27 @@ export function setupInput(
     if (explorerState.visible && currentMode === Mode.Normal) {
       const filePath = handleEnter(explorerState, config);
       if (filePath && onFileOpen) {
-        // File opened - switch focus to preview
-        layout.preview.focus();
+        // File opened - switch focus to preview (auto-focus behavior)
+        focusPreviewPane(layout);
         explorerFocused = false;
+        previewFocused = true;
         onFileOpen(filePath);
       } else {
-        // Directory navigated - update explorer display
+        // Directory navigated - keep focus in explorer
         updateExplorerContent(layout, explorerState, config);
       }
-      updateBorders(screen, layout, currentMode, explorerFocused);
+      updateBorders(screen, layout, currentMode, explorerFocused, previewFocused);
       screen.render();
     }
   });
 }
 
 /**
- * Update TUI border colors based on current mode
+ * Update TUI border colors based on current mode and focus state
  * Render mode: Preview pane gets cyan focus border
- * Normal mode: Explorer gets cyan when focused, others yellowA
+ * Normal mode: Active pane gets cyan focus border
  */
-function updateBorders(screen: any, layout: Layout, mode: Mode, explorerFocused: boolean = false): void {
+function updateBorders(screen: any, layout: Layout, mode: Mode, explorerFocused: boolean = false, previewFocused: boolean = false): void {
   const theme = bumblebeeTheme.current;
 
   if (mode === Mode.Render) {
@@ -143,8 +148,8 @@ function updateBorders(screen: any, layout: Layout, mode: Mode, explorerFocused:
     layout.preview.style.border.fg = theme.cyan;
     layout.explorer.style.border.fg = theme.yellowA;
   } else {
-    // Normal mode: Explorer gets cyan when focused
-    layout.preview.style.border.fg = theme.yellowA;
+    // Normal mode: Active pane gets cyan focus border
+    layout.preview.style.border.fg = previewFocused ? theme.cyan : theme.yellowA;
     layout.explorer.style.border.fg = explorerFocused ? theme.cyan : theme.yellowA;
     layout.titleBar.style.border.fg = theme.yellowA;
     layout.statusBar.style.border.fg = theme.yellowA;

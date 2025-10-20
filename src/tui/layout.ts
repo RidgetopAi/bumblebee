@@ -132,7 +132,7 @@ export function appendLayoutToScreen(screen: any, layout: Layout): void {
   screen.append(layout.statusBar);
 
   // Set initial focus to preview pane (main content area)
-  layout.preview.focus();
+  focusPreviewPane(layout);
 }
 
 /**
@@ -174,6 +174,22 @@ export function hideExplorerPane(layout: Layout): void {
 
   // Force layout refresh
   layout.preview.emit('resize');
+}
+
+/**
+ * Set focus to the explorer pane
+ * Updates blessed focus for keyboard input handling
+ */
+export function focusExplorerPane(layout: Layout): void {
+  layout.explorer.focus();
+}
+
+/**
+ * Set focus to the preview pane
+ * Updates blessed focus for keyboard input handling
+ */
+export function focusPreviewPane(layout: Layout): void {
+  layout.preview.focus();
 }
 
 /**
