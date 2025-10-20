@@ -1,6 +1,7 @@
 import { parseMd } from '../parser/mdToAst.js';
 import { wrapText } from './ansi/wrap.js';
 import { getTextWidth } from './ansi/width.js';
+import { renderCodeBlock } from './blocks/code.js';
 /**
  * Render markdown content to ANSI-formatted terminal output or blessed tags.
  *
@@ -56,7 +57,7 @@ function renderNode(node, terminalWidth, theme, useBlessedTags) {
         case 'blockquote':
             return renderBlockquote(node, terminalWidth, theme, useBlessedTags);
         case 'code':
-            return renderCode(node, terminalWidth, theme);
+            return renderCodeBlock(node, terminalWidth, theme);
         case 'table':
             return renderTable(node, terminalWidth, theme);
         default:
@@ -84,21 +85,22 @@ function renderParagraph(node, terminalWidth, theme) {
 function renderHeading(node, terminalWidth, theme, useBlessedTags) {
     const level = node.depth;
     const text = collectText(node);
+    const prefix = '#'.repeat(level) + ' ';
     if (useBlessedTags) {
         // Use blessed tags for TUI mode
         switch (level) {
             case 1:
-                return '{bold}{underline}{yellow-fg}' + text + '{/yellow-fg}{/underline}{/bold}';
+                return '{bold}{underline}{yellow-fg}' + prefix + text + '{/yellow-fg}{/underline}{/bold}';
             case 2:
-                return '{bold}{yellow-fg}' + text + '{/yellow-fg}{/bold}';
+                return '{bold}{yellow-fg}' + prefix + text + '{/yellow-fg}{/bold}';
             case 3:
-                return '{bold}{yellow-fg}' + text + '{/yellow-fg}{/bold}';
+                return '{bold}{yellow-fg}' + prefix + text + '{/yellow-fg}{/bold}';
             case 4:
-                return '{yellow-fg}' + text + '{/yellow-fg}';
+                return '{yellow-fg}' + prefix + text + '{/yellow-fg}';
             case 5:
             case 6:
             default:
-                return '{#8E8F95-fg}' + text + '{/#8E8F95-fg}';
+                return '{#8E8F95-fg}' + prefix + text + '{/#8E8F95-fg}';
         }
     }
     else {
@@ -106,21 +108,21 @@ function renderHeading(node, terminalWidth, theme, useBlessedTags) {
         switch (level) {
             case 1:
                 // Bold + Underline + yellowA
-                return '\x1b[1m\x1b[4m' + theme.current.yellowA + text + '\x1b[39m\x1b[24m\x1b[22m';
+                return '\x1b[1m\x1b[4m' + theme.current.yellowA + prefix + text + '\x1b[39m\x1b[24m\x1b[22m';
             case 2:
                 // Bold + yellowA
-                return '\x1b[1m' + theme.current.yellowA + text + '\x1b[39m\x1b[22m';
+                return '\x1b[1m' + theme.current.yellowA + prefix + text + '\x1b[39m\x1b[22m';
             case 3:
                 // Bold + yellowB
-                return '\x1b[1m' + theme.current.yellowB + text + '\x1b[39m\x1b[22m';
+                return '\x1b[1m' + theme.current.yellowB + prefix + text + '\x1b[39m\x1b[22m';
             case 4:
                 // yellowB (no bold)
-                return theme.current.yellowB + text + '\x1b[39m';
+                return theme.current.yellowB + prefix + text + '\x1b[39m';
             case 5:
             case 6:
             default:
                 // gray (subtle)
-                return theme.current.gray + text + '\x1b[39m';
+                return theme.current.gray + prefix + text + '\x1b[39m';
         }
     }
 }
@@ -207,26 +209,6 @@ function renderBlockquote(node, terminalWidth, theme, useBlessedTags) {
         const dimmedLine = '\x1b[2m' + line + '\x1b[22m'; // Dim the text
         return border + ' ' + dimmedLine;
     });
-    return borderedLines.join('\n');
-}
-/**
- * Render a code block (plain, no syntax highlighting yet).
- */
-function renderCode(node, terminalWidth, theme) {
-    const code = node.value;
-    const lang = node.lang || '';
-    // Simple code block with borders
-    const lines = code.split('\n');
-    const borderedLines = lines.map(line => {
-        // Use gray border for code blocks
-        const border = theme.current.gray + '│' + '\x1b[0m';
-        return border + ' ' + line;
-    });
-    // Add language badge if present
-    if (lang) {
-        const badge = theme.current.gray + '┤ ' + lang + ' ├' + '\x1b[0m';
-        borderedLines.unshift(badge);
-    }
     return borderedLines.join('\n');
 }
 /**
