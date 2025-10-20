@@ -1,3 +1,4 @@
+import { bumblebeeTheme } from '../../config/theme-bumblebee.js';
 // Cast blessed to any to avoid TypeScript issues (neo-blessed has no types)
 const blessedAny = (await import('neo-blessed')).default;
 export function createPreview() {
@@ -11,5 +12,13 @@ export function createPreview() {
         alwaysScroll: true,
         mouse: true,
         keys: true,
+        style: {
+            border: {
+                fg: bumblebeeTheme.current.yellowA, // Normal border color
+            },
+        },
+        border: {
+            type: 'line',
+        },
     });
 }

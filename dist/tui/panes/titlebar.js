@@ -12,6 +12,12 @@ export function createTitleBar() {
         style: {
             bg: bumblebeeTheme.current.nearBlack,
             fg: bumblebeeTheme.current.yellowB,
+            border: {
+                fg: bumblebeeTheme.current.yellowA, // Normal border color
+            },
+        },
+        border: {
+            type: 'line',
         },
     });
 }

@@ -2,7 +2,7 @@ import { parseMd } from '../parser/mdToAst.js';
 import { wrapText } from './ansi/wrap.js';
 import { getTextWidth } from './ansi/width.js';
 /**
- * Render markdown content to ANSI-formatted terminal output.
+ * Render markdown content to ANSI-formatted terminal output or blessed tags.
  *
  * Takes markdown string, parses it to MDAST, and renders each node type
  * with appropriate ANSI formatting, colors, and text wrapping.
@@ -10,36 +10,37 @@ import { getTextWidth } from './ansi/width.js';
  * @param markdown - Raw markdown string to render
  * @param width - Terminal width in columns for text wrapping
  * @param theme - Bumblebee theme with color palette and utilities
- * @returns ANSI-formatted string ready for terminal display
+ * @param useBlessedTags - Use blessed tags (e.g. {yellow-fg}) instead of ANSI codes
+ * @returns Formatted string ready for terminal display
  *
  * @example
  * ```typescript
  * import { bumblebeeTheme } from '../config/theme-bumblebee.js';
- * const output = render('# Hello World\n\nThis is a paragraph.', 80, bumblebeeTheme);
+ * const output = render('# Hello World\n\nThis is a paragraph.', 80, bumblebeeTheme, false);
  * console.log(output); // ANSI-formatted output
  * ```
  */
-export function render(markdown, width, theme) {
+export function render(markdown, width, theme, useBlessedTags = false) {
     const ast = parseMd(markdown);
-    return renderRoot(ast, width, theme);
+    return renderRoot(ast, width, theme, useBlessedTags);
 }
 /**
  * Render the root document node by joining all child nodes with newlines.
  */
-function renderRoot(node, terminalWidth, theme) {
-    const children = node.children.map(child => renderNode(child, terminalWidth, theme));
+function renderRoot(node, terminalWidth, theme, useBlessedTags) {
+    const children = node.children.map(child => renderNode(child, terminalWidth, theme, useBlessedTags));
     return children.join('\n\n');
 }
 /**
  * Render a single MDAST node to ANSI-formatted string.
  * Dispatches to specific handler functions based on node type.
  */
-function renderNode(node, terminalWidth, theme) {
+function renderNode(node, terminalWidth, theme, useBlessedTags) {
     switch (node.type) {
         case 'paragraph':
             return renderParagraph(node, terminalWidth, theme);
         case 'heading':
-            return renderHeading(node, terminalWidth, theme);
+            return renderHeading(node, terminalWidth, theme, useBlessedTags);
         case 'text':
             return renderText(node);
         case 'emphasis':
@@ -49,18 +50,18 @@ function renderNode(node, terminalWidth, theme) {
         case 'link':
             return renderLink(node, theme);
         case 'list':
-            return renderList(node, terminalWidth, theme);
+            return renderList(node, terminalWidth, theme, useBlessedTags);
         case 'listItem':
-            return renderListItem(node, terminalWidth, theme);
+            return renderListItem(node, terminalWidth, theme, useBlessedTags);
         case 'blockquote':
-            return renderBlockquote(node, terminalWidth, theme);
+            return renderBlockquote(node, terminalWidth, theme, useBlessedTags);
         case 'code':
             return renderCode(node, terminalWidth, theme);
         case 'table':
             return renderTable(node, terminalWidth, theme);
         default:
             // Fallback for unknown node types
-            return renderUnknown(node, terminalWidth, theme);
+            return renderUnknown(node, terminalWidth, theme, useBlessedTags);
     }
 }
 /**
@@ -73,14 +74,19 @@ function renderParagraph(node, terminalWidth, theme) {
 /**
  * Render a heading with # prefixes and emphasis.
  */
-function renderHeading(node, terminalWidth, theme) {
+function renderHeading(node, terminalWidth, theme, useBlessedTags) {
     const level = node.depth;
     const prefix = '#'.repeat(level) + ' ';
     const text = collectText(node);
     const headingText = prefix + text;
-    // Apply yellow emphasis to the entire heading
-    const emphasized = theme.current.yellowB + headingText + '\x1b[0m';
-    return wrapText(emphasized, terminalWidth);
+    if (useBlessedTags) {
+        // Use blessed tags for TUI mode
+        return '{yellow-fg}' + headingText + '{/yellow-fg}';
+    }
+    else {
+        // Use ANSI codes for stdout mode
+        return theme.current.yellowB + headingText + '\x1b[39m';
+    }
 }
 /**
  * Render plain text content.
@@ -118,28 +124,28 @@ function renderLink(node, theme) {
 /**
  * Render a list (ordered or unordered).
  */
-function renderList(node, terminalWidth, theme) {
+function renderList(node, terminalWidth, theme, useBlessedTags) {
     const isOrdered = node.ordered;
     const start = node.start || 1;
     const items = node.children.map((item, index) => {
         const bullet = isOrdered ? `${start + index}.` : '•';
-        return renderListItemWithBullet(item, bullet, terminalWidth, theme);
+        return renderListItemWithBullet(item, bullet, terminalWidth, theme, useBlessedTags);
     });
     return items.join('\n');
 }
 /**
  * Render a list item with bullet/number prefix and indentation.
  */
-function renderListItem(node, terminalWidth, theme) {
+function renderListItem(node, terminalWidth, theme, useBlessedTags) {
     // This is called for nested list items, use a simple bullet
-    return renderListItemWithBullet(node, '•', terminalWidth, theme);
+    return renderListItemWithBullet(node, '•', terminalWidth, theme, useBlessedTags);
 }
 /**
  * Helper to render a list item with a specific bullet prefix.
  */
-function renderListItemWithBullet(node, bullet, terminalWidth, theme) {
+function renderListItemWithBullet(node, bullet, terminalWidth, theme, useBlessedTags) {
     const content = node.children
-        .map(child => renderNode(child, terminalWidth - 2, theme)) // -2 for bullet + space
+        .map(child => renderNode(child, terminalWidth - 2, theme, useBlessedTags)) // -2 for bullet + space
         .join('\n');
     const lines = content.split('\n');
     const indentedLines = lines.map((line, index) => {
@@ -155,9 +161,9 @@ function renderListItemWithBullet(node, bullet, terminalWidth, theme) {
 /**
  * Render a blockquote with left border bar and gray color.
  */
-function renderBlockquote(node, terminalWidth, theme) {
+function renderBlockquote(node, terminalWidth, theme, useBlessedTags) {
     const content = node.children
-        .map(child => renderNode(child, terminalWidth - 2, theme)) // -2 for border
+        .map(child => renderNode(child, terminalWidth - 2, theme, useBlessedTags)) // -2 for border
         .join('\n\n');
     const lines = content.split('\n');
     const borderedLines = lines.map(line => {
@@ -252,10 +258,10 @@ function calculateColumnWidths(rows, maxTotalWidth) {
 /**
  * Fallback renderer for unknown node types.
  */
-function renderUnknown(node, terminalWidth, theme) {
+function renderUnknown(node, terminalWidth, theme, useBlessedTags) {
     // Try to render children if they exist
     if ('children' in node && Array.isArray(node.children)) {
-        const children = node.children.map((child) => renderNode(child, terminalWidth, theme));
+        const children = node.children.map((child) => renderNode(child, terminalWidth, theme, useBlessedTags));
         return children.join('');
     }
     // Fallback to empty string

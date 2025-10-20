@@ -28,12 +28,12 @@ export function createLayout(fileOrDir: string): Layout {
   // Use Bumblebee theme colors
   const theme = bumblebeeTheme.current;
 
-  // Title bar: Top, full width, 1 line high
+  // Title bar: Top, full width, 3 lines (1 content + 2 border lines)
   const titleBar = blessedAny.box({
     top: 0,
     left: 0,
     width: '100%',
-    height: 1,
+    height: 3,
     content: 'Bumblebee',
     align: 'center',
     style: {
@@ -51,10 +51,10 @@ export function createLayout(fileOrDir: string): Layout {
   // Explorer pane: Left side, initially hidden (height 0)
   // Phase 3 will implement toggle and content
   const explorer = blessedAny.box({
-    top: 1,                    // Below title bar
+    top: 3,                    // Below title bar (title is 3 lines tall)
     left: 0,
     width: 0,                  // Initially hidden (0 width)
-    height: screenHeight - 2,  // Full height minus title and status bars
+    height: screenHeight - 6,  // Full height minus title (3) and status (3) bars
     hidden: true,              // Initially hidden
     style: {
       border: {
@@ -69,13 +69,15 @@ export function createLayout(fileOrDir: string): Layout {
   // Preview pane: Right side, main content area
   // Will show rendered markdown content
   const preview = blessedAny.box({
-    top: 1,                    // Below title bar
+    top: 3,                    // Below title bar (title is 3 lines tall)
     left: 0,                   // Full width initially (explorer hidden)
     width: '100%',             // Full width when explorer hidden
-    height: screenHeight - 2,  // Full height minus title and status bars
+    height: screenHeight - 6,  // Full height minus title (3) and status (3) bars
     scrollable: true,          // Allow scrolling for long content
     alwaysScroll: true,        // Always show scrollbar
+    keys: true,                // Enable keyboard input
     mouse: true,               // Enable mouse events (for future features)
+    tags: true,                // Enable tag parsing for blessed tags
     style: {
       border: {
         fg: theme.yellowA,     // Normal border color
@@ -89,12 +91,12 @@ export function createLayout(fileOrDir: string): Layout {
     },
   });
 
-  // Status bar: Bottom, full width, 1 line high
+  // Status bar: Bottom, full width, 3 lines (1 content + 2 border lines)
   const statusBar = blessedAny.box({
     bottom: 0,
     left: 0,
     width: '100%',
-    height: 1,
+    height: 3,
     content: fileOrDir,        // Show current file/directory path
     align: 'left',
     style: {

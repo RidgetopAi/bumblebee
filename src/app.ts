@@ -34,8 +34,8 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
       // Get theme based on config
       const theme = getThemeForConfig(config.trueColor);
 
-      // Render markdown to ANSI
-      const output = render(markdown, width, theme);
+      // Render markdown to ANSI (useBlessedTags = false for stdout)
+      const output = render(markdown, width, theme, false);
 
       // Output to stdout
       console.log(output);
@@ -67,23 +67,28 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
   try {
     // Check if file exists and is a file
     if (!fs.existsSync(fileOrDir)) {
-      layout.preview.setContent(`Error: File not found: ${fileOrDir}`);
+      layout.preview.content = `Error: File not found: ${fileOrDir}`;
+      screen.render();
     } else {
       const stat = fs.statSync(fileOrDir);
       if (!stat.isFile()) {
-        layout.preview.setContent(`Error: ${fileOrDir} is not a file`);
+        layout.preview.content = `Error: ${fileOrDir} is not a file`;
+        screen.render();
       } else {
         // Read markdown content
         markdownContent = fs.readFileSync(fileOrDir, 'utf-8');
 
         // Initial render at current terminal width
+        // Use blessed tags (useBlessedTags = true) for TUI mode
         const width = process.stdout.columns || 80;
-        const rendered = render(markdownContent, width, currentTheme);
-        layout.preview.setContent(rendered);
+        const rendered = render(markdownContent, width, currentTheme, true);
+        layout.preview.content = rendered;
+        screen.render();
       }
     }
   } catch (error) {
-    layout.preview.setContent(`Error reading file: ${(error as Error).message}`);
+    layout.preview.content = `Error reading file: ${(error as Error).message}`;
+    screen.render();
   }
 
   // Set up input handling and keybindings
@@ -92,10 +97,12 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
   // Handle resize with content reflow
   screen.on('resize', function() {
     // Re-render content at new terminal width
+    // Use blessed tags (useBlessedTags = true) for TUI mode
     if (markdownContent) {
       const newWidth = process.stdout.columns || 80;
-      const rendered = render(markdownContent, newWidth, currentTheme);
-      layout.preview.setContent(rendered);
+      const rendered = render(markdownContent, newWidth, currentTheme, true);
+
+      layout.preview.content = rendered;
     }
     screen.render();
   });

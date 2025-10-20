@@ -5,7 +5,7 @@ import type { BumblebeeTheme } from '../config/theme-bumblebee.js';
 import type { Root, RootContent, Paragraph, Heading, Text, Emphasis, Strong, Link, List, ListItem, Blockquote, Code, Table, TableRow, TableCell } from 'mdast';
 
 /**
- * Render markdown content to ANSI-formatted terminal output or blessed tags.
+ * Render markdown content to ANSI-formatted terminal output.
  *
  * Takes markdown string, parses it to MDAST, and renders each node type
  * with appropriate ANSI formatting, colors, and text wrapping.
@@ -13,26 +13,25 @@ import type { Root, RootContent, Paragraph, Heading, Text, Emphasis, Strong, Lin
  * @param markdown - Raw markdown string to render
  * @param width - Terminal width in columns for text wrapping
  * @param theme - Bumblebee theme with color palette and utilities
- * @param useBlessedTags - Use blessed tags (e.g. {yellow-fg}) instead of ANSI codes
- * @returns Formatted string ready for terminal display
+ * @returns ANSI-formatted string ready for terminal display
  *
  * @example
  * ```typescript
  * import { bumblebeeTheme } from '../config/theme-bumblebee.js';
- * const output = render('# Hello World\n\nThis is a paragraph.', 80, bumblebeeTheme, false);
+ * const output = render('# Hello World\n\nThis is a paragraph.', 80, bumblebeeTheme);
  * console.log(output); // ANSI-formatted output
  * ```
  */
-export function render(markdown: string, width: number, theme: BumblebeeTheme, useBlessedTags: boolean = false): string {
+export function render(markdown: string, width: number, theme: BumblebeeTheme): string {
   const ast = parseMd(markdown);
-  return renderRoot(ast, width, theme, useBlessedTags);
+  return renderRoot(ast, width, theme);
 }
 
 /**
  * Render the root document node by joining all child nodes with newlines.
  */
-function renderRoot(node: Root, terminalWidth: number, theme: BumblebeeTheme, useBlessedTags: boolean): string {
-  const children = node.children.map(child => renderNode(child, terminalWidth, theme, useBlessedTags));
+function renderRoot(node: Root, terminalWidth: number, theme: BumblebeeTheme): string {
+  const children = node.children.map(child => renderNode(child, terminalWidth, theme));
   return children.join('\n\n');
 }
 
@@ -40,12 +39,12 @@ function renderRoot(node: Root, terminalWidth: number, theme: BumblebeeTheme, us
  * Render a single MDAST node to ANSI-formatted string.
  * Dispatches to specific handler functions based on node type.
  */
-function renderNode(node: RootContent, terminalWidth: number, theme: BumblebeeTheme, useBlessedTags: boolean): string {
+function renderNode(node: RootContent, terminalWidth: number, theme: BumblebeeTheme): string {
   switch (node.type) {
     case 'paragraph':
       return renderParagraph(node as Paragraph, terminalWidth, theme);
     case 'heading':
-      return renderHeading(node as Heading, terminalWidth, theme, useBlessedTags);
+      return renderHeading(node as Heading, terminalWidth, theme);
     case 'text':
       return renderText(node as Text);
     case 'emphasis':
@@ -55,18 +54,18 @@ function renderNode(node: RootContent, terminalWidth: number, theme: BumblebeeTh
     case 'link':
       return renderLink(node as Link, theme);
     case 'list':
-      return renderList(node as List, terminalWidth, theme, useBlessedTags);
+      return renderList(node as List, terminalWidth, theme);
     case 'listItem':
-      return renderListItem(node as ListItem, terminalWidth, theme, useBlessedTags);
+      return renderListItem(node as ListItem, terminalWidth, theme);
     case 'blockquote':
-      return renderBlockquote(node as Blockquote, terminalWidth, theme, useBlessedTags);
+      return renderBlockquote(node as Blockquote, terminalWidth, theme);
     case 'code':
       return renderCode(node as Code, terminalWidth, theme);
     case 'table':
       return renderTable(node as Table, terminalWidth, theme);
     default:
       // Fallback for unknown node types
-      return renderUnknown(node, terminalWidth, theme, useBlessedTags);
+      return renderUnknown(node, terminalWidth, theme);
   }
 }
 
@@ -81,19 +80,16 @@ function renderParagraph(node: Paragraph, terminalWidth: number, theme: Bumblebe
 /**
  * Render a heading with # prefixes and emphasis.
  */
-function renderHeading(node: Heading, terminalWidth: number, theme: BumblebeeTheme, useBlessedTags: boolean): string {
+function renderHeading(node: Heading, terminalWidth: number, theme: BumblebeeTheme): string {
   const level = node.depth;
   const prefix = '#'.repeat(level) + ' ';
   const text = collectText(node);
   const headingText = prefix + text;
 
-  if (useBlessedTags) {
-    // Use blessed tags for TUI mode
-    return '{yellow-fg}' + headingText + '{/yellow-fg}';
-  } else {
-    // Use ANSI codes for stdout mode
-    return theme.current.yellowB + headingText + '\x1b[39m';
-  }
+  // Apply yellow emphasis to the entire heading
+  const emphasized = theme.current.yellowB + headingText + '[0m';
+
+  return wrapText(emphasized, terminalWidth);
 }
 
 /**
@@ -138,13 +134,13 @@ function renderLink(node: Link, theme: BumblebeeTheme): string {
 /**
  * Render a list (ordered or unordered).
  */
-function renderList(node: List, terminalWidth: number, theme: BumblebeeTheme, useBlessedTags: boolean): string {
+function renderList(node: List, terminalWidth: number, theme: BumblebeeTheme): string {
   const isOrdered = node.ordered;
   const start = node.start || 1;
 
   const items = node.children.map((item, index) => {
     const bullet = isOrdered ? `${start + index}.` : '•';
-    return renderListItemWithBullet(item as ListItem, bullet, terminalWidth, theme, useBlessedTags);
+    return renderListItemWithBullet(item as ListItem, bullet, terminalWidth, theme);
   });
 
   return items.join('\n');
@@ -153,9 +149,9 @@ function renderList(node: List, terminalWidth: number, theme: BumblebeeTheme, us
 /**
  * Render a list item with bullet/number prefix and indentation.
  */
-function renderListItem(node: ListItem, terminalWidth: number, theme: BumblebeeTheme, useBlessedTags: boolean): string {
+function renderListItem(node: ListItem, terminalWidth: number, theme: BumblebeeTheme): string {
   // This is called for nested list items, use a simple bullet
-  return renderListItemWithBullet(node, '•', terminalWidth, theme, useBlessedTags);
+  return renderListItemWithBullet(node, '•', terminalWidth, theme);
 }
 
 /**
@@ -165,11 +161,10 @@ function renderListItemWithBullet(
   node: ListItem,
   bullet: string,
   terminalWidth: number,
-  theme: BumblebeeTheme,
-  useBlessedTags: boolean
+  theme: BumblebeeTheme
 ): string {
   const content = node.children
-    .map(child => renderNode(child, terminalWidth - 2, theme, useBlessedTags)) // -2 for bullet + space
+    .map(child => renderNode(child, terminalWidth - 2, theme)) // -2 for bullet + space
     .join('\n');
 
   const lines = content.split('\n');
@@ -187,9 +182,9 @@ function renderListItemWithBullet(
 /**
  * Render a blockquote with left border bar and gray color.
  */
-function renderBlockquote(node: Blockquote, terminalWidth: number, theme: BumblebeeTheme, useBlessedTags: boolean): string {
+function renderBlockquote(node: Blockquote, terminalWidth: number, theme: BumblebeeTheme): string {
   const content = node.children
-    .map(child => renderNode(child, terminalWidth - 2, theme, useBlessedTags)) // -2 for border
+    .map(child => renderNode(child, terminalWidth - 2, theme)) // -2 for border
     .join('\n\n');
 
   const lines = content.split('\n');
@@ -306,11 +301,11 @@ function calculateColumnWidths(rows: TableRow[], maxTotalWidth: number): number[
 /**
  * Fallback renderer for unknown node types.
  */
-function renderUnknown(node: RootContent, terminalWidth: number, theme: BumblebeeTheme, useBlessedTags: boolean): string {
+function renderUnknown(node: RootContent, terminalWidth: number, theme: BumblebeeTheme): string {
   // Try to render children if they exist
   if ('children' in node && Array.isArray(node.children)) {
     const children = (node as any).children.map((child: RootContent) =>
-      renderNode(child, terminalWidth, theme, useBlessedTags)
+      renderNode(child, terminalWidth, theme)
     );
     return children.join('');
   }
