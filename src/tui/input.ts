@@ -114,14 +114,14 @@ export function setupInput(
   // Enter key for explorer actions
   screen.key('enter', () => {
     if (explorerState.visible && currentMode === Mode.Normal) {
-      const filePath = handleEnter(explorerState);
+      const filePath = handleEnter(explorerState, config);
       if (filePath && onFileOpen) {
         // File opened - switch focus to preview
         layout.preview.focus();
         explorerFocused = false;
         onFileOpen(filePath);
       } else {
-        // Directory toggled - update explorer display
+        // Directory navigated - update explorer display
         updateExplorerContent(layout, explorerState, config);
       }
       updateBorders(screen, layout, currentMode, explorerFocused);

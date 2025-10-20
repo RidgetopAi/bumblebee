@@ -67,12 +67,12 @@ describe('Explorer Pane', () => {
       const state = createExplorerState(testDir, defaultConfig);
 
       const selectedPath = getSelectedPath(state);
-      expect(selectedPath).toBe(testDir); // Root directory
+      // With parent directory support, index 0 should be the ".." entry when not at root
+      expect(selectedPath).toMatch(/\/\.\.$/); // Should be ".." path
 
       const selectedNode = getSelectedNode(state);
-      expect(selectedNode).not.toBeNull();
-      expect(selectedNode?.path).toBe(testDir);
-      expect(selectedNode?.type).toBe('directory');
+      // ".." entries don't have nodes in the tree, so should be null
+      expect(selectedNode).toBeNull();
     });
 
     it('should return null for invalid selection', () => {
@@ -111,11 +111,11 @@ describe('Explorer Pane', () => {
 
       state.selectedIndex = fileIndex;
 
-      const result = handleEnter(state);
+      const result = handleEnter(state, defaultConfig);
       expect(result).toBe(state.flattened[fileIndex]);
     });
 
-    it('should return null when directory is selected (toggles expansion)', () => {
+    it('should return null when directory is selected (navigates into directory)', () => {
       const state = createExplorerState(testDir, defaultConfig);
 
       // Select a directory
@@ -124,8 +124,8 @@ describe('Explorer Pane', () => {
 
       state.selectedIndex = dirIndex;
 
-      const result = handleEnter(state);
-      expect(result).toBeNull(); // Directory toggle returns null
+      const result = handleEnter(state, defaultConfig);
+      expect(result).toBeNull(); // Directory navigation returns null
     });
   });
 
@@ -161,23 +161,50 @@ describe('Explorer Pane', () => {
     });
   });
 
-  describe('directory expansion', () => {
-    it('should expand and collapse directories', () => {
+  describe('directory navigation', () => {
+    it('should navigate into directories', () => {
       const state = createExplorerState(testDir, defaultConfig);
 
       // Find subdir path
       const subdirPath = path.join(testDir, 'subdir');
-      const initialFlattenedLength = state.flattened.length;
+      const subdirIndex = state.flattened.findIndex(p => p === subdirPath);
+      expect(subdirIndex).toBeGreaterThan(-1);
 
-      // Initially expanded (root is expanded)
-      expect(state.expandedDirs.has(subdirPath)).toBe(false); // subdir starts collapsed
+      // Select the subdirectory
+      state.selectedIndex = subdirIndex;
 
-      // Toggle expansion
-      handleEnter(state); // This should toggle the selected directory
+      // Store original root path
+      const originalRoot = state.rootPath;
 
-      // Note: This test assumes subdir is selected. In practice, we'd need to select it first
-      // For now, just test that the mechanism exists
-      expect(state.expandedDirs.has.bind(state.expandedDirs)).toBeDefined();
+      // Navigate into directory
+      const result = handleEnter(state, defaultConfig);
+      expect(result).toBeNull(); // Directory navigation returns null
+
+      // Should have changed root path
+      expect(state.rootPath).toBe(subdirPath);
+      expect(state.rootPath).not.toBe(originalRoot);
+
+      // Selection should be reset
+      expect(state.selectedIndex).toBe(0);
+    });
+
+    it('should navigate to parent directory with ".."', () => {
+      // Create state in a subdirectory
+      const subdirPath = path.join(testDir, 'subdir');
+      const state = createExplorerState(subdirPath, defaultConfig);
+
+      // Should have ".." as first entry
+      expect(state.flattened[0]).toMatch(/\/\.\.$/);
+
+      // Select ".."
+      state.selectedIndex = 0;
+
+      // Navigate up
+      const result = handleEnter(state, defaultConfig);
+      expect(result).toBeNull(); // Parent navigation returns null
+
+      // Should be back in original directory
+      expect(state.rootPath).toBe(testDir);
     });
   });
 });
