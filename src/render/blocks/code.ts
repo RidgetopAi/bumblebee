@@ -1,4 +1,4 @@
-import { codeToAnsi } from '../shiki.js';
+import { codeToAnsi, initializeShiki } from '../shiki.js';
 import { wrapText } from '../ansi/wrap.js';
 import { getTextWidth } from '../ansi/width.js';
 import type { BumblebeeTheme } from '../../config/theme-bumblebee.js';
@@ -69,21 +69,25 @@ export function renderCodeBlock(node: Code, terminalWidth: number, theme: Bumble
     return leftBorder + padding + lineWithGuides + padding + rightBorder;
   });
 
-  // Add language badge to top border if language is specified
-  let finalTopBorder = topBorder;
+  // Add language badge to top-right if language is specified
+  let finalLines = contentLines;
   if (lang) {
     const badge = createLanguageBadge(lang, theme);
-    const badgeWidth = getTextWidth(lang) + 4; // ┤ Lang ├
-    const badgeStartPos = terminalWidth - badgeWidth - 1; // Leave 1 space from right
+    // Overlay badge on the top border line
+    if (finalLines.length > 0) {
+      const topLine = finalLines[0];
+      const badgeWidth = getTextWidth(lang) + 4; // ┤ Lang ├
+      const badgeStartPos = terminalWidth - badgeWidth - 1; // Leave 1 space from right
 
-    // Overlay badge on the top border
-    const beforeBadge = finalTopBorder.substring(0, badgeStartPos);
-    const afterBadge = finalTopBorder.substring(badgeStartPos + badgeWidth);
-    finalTopBorder = beforeBadge + badge + afterBadge;
+      // Replace part of the top line with the badge
+      const beforeBadge = topLine.substring(0, badgeStartPos);
+      const afterBadge = topLine.substring(badgeStartPos + badgeWidth);
+      finalLines[0] = beforeBadge + badge + afterBadge;
+    }
   }
 
   // Combine all lines
-  return [finalTopBorder, ...contentLines, bottomBorder].join('\n');
+  return [topBorder, ...finalLines, bottomBorder].join('\n');
 }
 
 /**
@@ -120,20 +124,24 @@ function renderPlainCodeBlock(code: string, lang: string, terminalWidth: number,
   });
 
   // Add language badge to top-right if language is specified
-  let finalTopBorder = topBorder;
+  let finalLines = contentLines;
   if (lang) {
     const badge = createLanguageBadge(lang, theme);
-    const badgeWidth = getTextWidth(lang) + 4; // ┤ Lang ├
-    const badgeStartPos = terminalWidth - badgeWidth - 1; // Leave 1 space from right
+    // Overlay badge on the top border line
+    if (finalLines.length > 0) {
+      const topLine = finalLines[0];
+      const badgeWidth = getTextWidth(lang) + 4; // ┤ Lang ├
+      const badgeStartPos = terminalWidth - badgeWidth - 1; // Leave 1 space from right
 
-    // Overlay badge on the top border
-    const beforeBadge = finalTopBorder.substring(0, badgeStartPos);
-    const afterBadge = finalTopBorder.substring(badgeStartPos + badgeWidth);
-    finalTopBorder = beforeBadge + badge + afterBadge;
+      // Replace part of the top line with the badge
+      const beforeBadge = topLine.substring(0, badgeStartPos);
+      const afterBadge = topLine.substring(badgeStartPos + badgeWidth);
+      finalLines[0] = beforeBadge + badge + afterBadge;
+    }
   }
 
   // Combine all lines
-  return [finalTopBorder, ...contentLines, bottomBorder].join('\n');
+  return [topBorder, ...finalLines, bottomBorder].join('\n');
 }
 
 /**
@@ -162,13 +170,13 @@ function addIndentationGuides(line: string, contentWidth: number): string {
 }
 
 /**
- * Create a language badge for the top-right corner
+* Create a language badge for the top-right corner
+* Per spec: badge text #010600 (nearBlack), subtle background
  */
 function createLanguageBadge(lang: string, theme: BumblebeeTheme): string {
-  // Use nearBlack background with yellow text for contrast
-  const background = '\x1b[48;2;1;6;0m'; // nearBlack background
-  const textColor = '\x1b[38;2;242;214;56m'; // yellowA text
-  const reset = '\x1b[0m';
+// Use nearBlack text with subtle background (yellow border shows through)
+const textColor = '\x1b[38;2;1;6;0m'; // nearBlack text
+const reset = '\x1b[39m';
 
-  return `${background}${textColor}┤ ${lang} ├${reset}`;
+return `${textColor}┤ ${lang} ├${reset}`;
 }

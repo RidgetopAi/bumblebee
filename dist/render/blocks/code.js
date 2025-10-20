@@ -58,19 +58,23 @@ export function renderCodeBlock(node, terminalWidth, theme) {
         const padding = ' ';
         return leftBorder + padding + lineWithGuides + padding + rightBorder;
     });
-    // Add language badge to top border if language is specified
-    let finalTopBorder = topBorder;
+    // Add language badge to top-right if language is specified
+    let finalLines = contentLines;
     if (lang) {
         const badge = createLanguageBadge(lang, theme);
-        const badgeWidth = getTextWidth(lang) + 4; // ┤ Lang ├
-        const badgeStartPos = terminalWidth - badgeWidth - 1; // Leave 1 space from right
-        // Overlay badge on the top border
-        const beforeBadge = finalTopBorder.substring(0, badgeStartPos);
-        const afterBadge = finalTopBorder.substring(badgeStartPos + badgeWidth);
-        finalTopBorder = beforeBadge + badge + afterBadge;
+        // Overlay badge on the top border line
+        if (finalLines.length > 0) {
+            const topLine = finalLines[0];
+            const badgeWidth = getTextWidth(lang) + 4; // ┤ Lang ├
+            const badgeStartPos = terminalWidth - badgeWidth - 1; // Leave 1 space from right
+            // Replace part of the top line with the badge
+            const beforeBadge = topLine.substring(0, badgeStartPos);
+            const afterBadge = topLine.substring(badgeStartPos + badgeWidth);
+            finalLines[0] = beforeBadge + badge + afterBadge;
+        }
     }
     // Combine all lines
-    return [finalTopBorder, ...contentLines, bottomBorder].join('\n');
+    return [topBorder, ...finalLines, bottomBorder].join('\n');
 }
 /**
  * Fallback renderer for plain code blocks when Shiki is not available
@@ -98,18 +102,22 @@ function renderPlainCodeBlock(code, lang, terminalWidth, theme) {
         return leftBorder + padding + lineWithGuides + padding + rightBorder;
     });
     // Add language badge to top-right if language is specified
-    let finalTopBorder = topBorder;
+    let finalLines = contentLines;
     if (lang) {
         const badge = createLanguageBadge(lang, theme);
-        const badgeWidth = getTextWidth(lang) + 4; // ┤ Lang ├
-        const badgeStartPos = terminalWidth - badgeWidth - 1; // Leave 1 space from right
-        // Overlay badge on the top border
-        const beforeBadge = finalTopBorder.substring(0, badgeStartPos);
-        const afterBadge = finalTopBorder.substring(badgeStartPos + badgeWidth);
-        finalTopBorder = beforeBadge + badge + afterBadge;
+        // Overlay badge on the top border line
+        if (finalLines.length > 0) {
+            const topLine = finalLines[0];
+            const badgeWidth = getTextWidth(lang) + 4; // ┤ Lang ├
+            const badgeStartPos = terminalWidth - badgeWidth - 1; // Leave 1 space from right
+            // Replace part of the top line with the badge
+            const beforeBadge = topLine.substring(0, badgeStartPos);
+            const afterBadge = topLine.substring(badgeStartPos + badgeWidth);
+            finalLines[0] = beforeBadge + badge + afterBadge;
+        }
     }
     // Combine all lines
-    return [finalTopBorder, ...contentLines, bottomBorder].join('\n');
+    return [topBorder, ...finalLines, bottomBorder].join('\n');
 }
 /**
  * Wrap a single line of code if it's too long
@@ -133,12 +141,12 @@ function addIndentationGuides(line, contentWidth) {
     return line;
 }
 /**
- * Create a language badge for the top-right corner
+* Create a language badge for the top-right corner
+* Per spec: badge text #010600 (nearBlack), subtle background
  */
 function createLanguageBadge(lang, theme) {
-    // Use nearBlack background with yellow text for contrast
-    const background = '\x1b[48;2;1;6;0m'; // nearBlack background
-    const textColor = '\x1b[38;2;242;214;56m'; // yellowA text
-    const reset = '\x1b[0m';
-    return `${background}${textColor}┤ ${lang} ├${reset}`;
+    // Use nearBlack text with subtle background (yellow border shows through)
+    const textColor = '\x1b[38;2;1;6;0m'; // nearBlack text
+    const reset = '\x1b[39m';
+    return `${textColor}┤ ${lang} ├${reset}`;
 }
