@@ -20,5 +20,28 @@
   "bugs": {
     "url": "https://github.com/RidgetopAi/bumblebee/issues"
   },
-  "homepage": "https://github.com/RidgetopAi/bumblebee#readme"
+  "homepage": "https://github.com/RidgetopAi/bumblebee#readme",
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "chokidar": "^4.0.3",
+    "cli-highlight": "^2.1.11",
+    "cli-truncate": "^5.1.0",
+    "clipboardy": "^5.0.0",
+    "commander": "^14.0.1",
+    "gray-matter": "^4.0.3",
+    "neo-blessed": "^0.2.0",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "shiki": "^3.13.0",
+    "string-width": "^8.1.0",
+    "strip-ansi": "^7.1.2",
+    "table": "^6.9.0",
+    "wrap-ansi": "^9.0.2"
+  },
+  "devDependencies": {
+    "@types/blessed": "^0.1.25",
+    "@types/node": "^24.8.1",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
 }

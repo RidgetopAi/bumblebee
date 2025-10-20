@@ -22,15 +22,17 @@ export interface ExplorerState {
  */
 export function createExplorerState(rootPath: string, config: BumblebeeConfig): ExplorerState {
   const tree = scanDirectoryTree(rootPath, config);
-  const flattened = tree ? flattenFileTree(tree) : [];
   const state = {
     rootPath,
     tree,
-    flattened,
+    flattened: [],
     selectedIndex: 0,
     expandedDirs: new Set([rootPath]), // Root is always expanded
     visible: false, // Initially hidden
   };
+
+  // Update flattened list based on expanded directories
+  updateFlattenedList(state);
 
   // Add parent directory entry if not at filesystem root
   addParentDirectoryEntry(state);
@@ -61,15 +63,17 @@ function addParentDirectoryEntry(state: ExplorerState): void {
 function navigateToDirectory(state: ExplorerState, targetPath: string, config: BumblebeeConfig): void {
   state.rootPath = targetPath;
   state.tree = scanDirectoryTree(targetPath, config);
-  state.flattened = state.tree ? flattenFileTree(state.tree) : [];
-
-  // Add parent directory entry if applicable
-  addParentDirectoryEntry(state);
 
   // Reset selection and expansion state
   state.selectedIndex = 0;
   state.expandedDirs.clear();
   state.expandedDirs.add(targetPath);
+
+  // Update flattened list based on expanded directories
+  updateFlattenedList(state);
+
+  // Add parent directory entry if applicable
+  addParentDirectoryEntry(state);
 }
 
 /**
@@ -120,8 +124,35 @@ export function toggleDirectory(state: ExplorerState, path: string): void {
   }
 
   // Re-flatten the tree with new expansion state
-  state.flattened = state.tree ? flattenFileTree(state.tree) : [];
-  // TODO: Filter flattened list based on expandedDirs
+  updateFlattenedList(state);
+}
+
+/**
+ * Update the flattened list to only show items in expanded directories
+ * This prevents files from showing in collapsed directories
+ */
+function updateFlattenedList(state: ExplorerState): void {
+  if (!state.tree) {
+    state.flattened = [];
+    return;
+  }
+
+  const result: string[] = [];
+
+  function traverse(node: FileTreeNode, parentPath: string): void {
+    // Always add the current node
+    result.push(node.path);
+
+    // Only traverse children if this directory is expanded
+    if (node.type === 'directory' && node.children && state.expandedDirs.has(node.path)) {
+      for (const child of node.children) {
+        traverse(child, node.path);
+      }
+    }
+  }
+
+  traverse(state.tree, '');
+  state.flattened = result;
 }
 
 /**
@@ -248,7 +279,9 @@ export function isExplorerVisible(state: ExplorerState): boolean {
 export function refreshExplorer(state: ExplorerState, config: BumblebeeConfig): void {
   // Re-scan the directory tree
   state.tree = scanDirectoryTree(state.rootPath, config);
-  state.flattened = state.tree ? flattenFileTree(state.tree) : [];
+
+  // Update flattened list based on expanded directories
+  updateFlattenedList(state);
 
   // Add parent directory entry if applicable
   addParentDirectoryEntry(state);

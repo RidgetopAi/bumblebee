@@ -72,20 +72,56 @@ function renderParagraph(node, terminalWidth, theme) {
     return wrapText(text, terminalWidth);
 }
 /**
- * Render a heading with # prefixes and emphasis.
+ * Render a heading with proper styling hierarchy (without # prefixes).
+ *
+ * Heading levels are styled with decreasing prominence:
+ * - H1: Bold + Underline + yellowA (most prominent)
+ * - H2: Bold + yellowA
+ * - H3: Bold + yellowB
+ * - H4: yellowB (no bold)
+ * - H5-H6: gray (subtle)
  */
 function renderHeading(node, terminalWidth, theme, useBlessedTags) {
     const level = node.depth;
-    const prefix = '#'.repeat(level) + ' ';
     const text = collectText(node);
-    const headingText = prefix + text;
     if (useBlessedTags) {
         // Use blessed tags for TUI mode
-        return '{yellow-fg}' + headingText + '{/yellow-fg}';
+        switch (level) {
+            case 1:
+                return '{bold}{underline}{yellow-fg}' + text + '{/yellow-fg}{/underline}{/bold}';
+            case 2:
+                return '{bold}{yellow-fg}' + text + '{/yellow-fg}{/bold}';
+            case 3:
+                return '{bold}{yellow-fg}' + text + '{/yellow-fg}{/bold}';
+            case 4:
+                return '{yellow-fg}' + text + '{/yellow-fg}';
+            case 5:
+            case 6:
+            default:
+                return '{#8E8F95-fg}' + text + '{/#8E8F95-fg}';
+        }
     }
     else {
         // Use ANSI codes for stdout mode
-        return theme.current.yellowB + headingText + '\x1b[39m';
+        switch (level) {
+            case 1:
+                // Bold + Underline + yellowA
+                return '\x1b[1m\x1b[4m' + theme.current.yellowA + text + '\x1b[39m\x1b[24m\x1b[22m';
+            case 2:
+                // Bold + yellowA
+                return '\x1b[1m' + theme.current.yellowA + text + '\x1b[39m\x1b[22m';
+            case 3:
+                // Bold + yellowB
+                return '\x1b[1m' + theme.current.yellowB + text + '\x1b[39m\x1b[22m';
+            case 4:
+                // yellowB (no bold)
+                return theme.current.yellowB + text + '\x1b[39m';
+            case 5:
+            case 6:
+            default:
+                // gray (subtle)
+                return theme.current.gray + text + '\x1b[39m';
+        }
     }
 }
 /**

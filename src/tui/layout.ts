@@ -37,10 +37,10 @@ export function createLayout(fileOrDir: string): Layout {
     content: 'Bumblebee',
     align: 'center',
     style: {
-      fg: theme.yellowB,      // Title text color
-      bg: theme.nearBlack,    // Title background color
+      fg: '#E9B033',         // Bumblebee yellowB title text
+      bg: '#010600',         // Bumblebee nearBlack background
       border: {
-        fg: theme.yellowA,    // Border color
+        fg: '#F2D638',       // Bumblebee yellowA border
       },
     },
     border: {
@@ -64,17 +64,18 @@ export function createLayout(fileOrDir: string): Layout {
     vi: false,                 // Disable vi keys (we handle our own)
     style: {
       border: {
-        fg: theme.yellowA,     // Normal border color
+        fg: '#F2D638',         // Bumblebee yellowA border
       },
       selected: {
-        bg: theme.cyan,        // Selection background
-        fg: theme.nearBlack,   // Selection text
+        bg: '#1EC4F2',         // Bumblebee cyan selection background
+        fg: '#010600',         // Bumblebee nearBlack selection text
+        bold: true,            // Make selection bold for better visibility
       },
       item: {
         fg: 'white',           // Normal item color
       },
       scrollbar: {
-        bg: theme.cyan,        // Scrollbar color
+        bg: '#1EC4F2',         // Bumblebee cyan scrollbar
       },
     },
     border: {
@@ -96,10 +97,10 @@ export function createLayout(fileOrDir: string): Layout {
     tags: true,                // Enable tag parsing for blessed tags
     style: {
       border: {
-        fg: theme.yellowA,     // Normal border color
+        fg: '#F2D638',         // Bumblebee yellowA border
       },
       scrollbar: {
-        bg: theme.cyan,        // Scrollbar color
+        bg: '#1EC4F2',         // Bumblebee cyan scrollbar
       },
     },
     border: {
@@ -116,10 +117,10 @@ export function createLayout(fileOrDir: string): Layout {
     content: fileOrDir,        // Show current file/directory path
     align: 'left',
     style: {
-      fg: theme.yellowB,       // Status text color
-      bg: theme.nearBlack,     // Status background color
+      fg: '#E9B033',           // Bumblebee yellowB status text
+      bg: '#010600',           // Bumblebee nearBlack background
       border: {
-        fg: theme.yellowA,     // Status border color (normal border)
+        fg: '#F2D638',         // Bumblebee yellowA border
       },
     },
     border: {
