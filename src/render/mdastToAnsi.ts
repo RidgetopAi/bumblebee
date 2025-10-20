@@ -91,43 +91,44 @@ function renderParagraph(node: Paragraph, terminalWidth: number, theme: Bumblebe
 function renderHeading(node: Heading, terminalWidth: number, theme: BumblebeeTheme, useBlessedTags: boolean): string {
   const level = node.depth;
   const text = collectText(node);
+  const prefix = '#'.repeat(level) + ' ';
 
   if (useBlessedTags) {
     // Use blessed tags for TUI mode
     switch (level) {
       case 1:
-        return '{bold}{underline}{yellow-fg}' + text + '{/yellow-fg}{/underline}{/bold}';
+        return '{bold}{underline}{yellow-fg}' + prefix + text + '{/yellow-fg}{/underline}{/bold}';
       case 2:
-        return '{bold}{yellow-fg}' + text + '{/yellow-fg}{/bold}';
+        return '{bold}{yellow-fg}' + prefix + text + '{/yellow-fg}{/bold}';
       case 3:
-        return '{bold}{yellow-fg}' + text + '{/yellow-fg}{/bold}';
+        return '{bold}{yellow-fg}' + prefix + text + '{/yellow-fg}{/bold}';
       case 4:
-        return '{yellow-fg}' + text + '{/yellow-fg}';
+        return '{yellow-fg}' + prefix + text + '{/yellow-fg}';
       case 5:
       case 6:
       default:
-        return '{#8E8F95-fg}' + text + '{/#8E8F95-fg}';
+        return '{#8E8F95-fg}' + prefix + text + '{/#8E8F95-fg}';
     }
   } else {
     // Use ANSI codes for stdout mode
     switch (level) {
       case 1:
         // Bold + Underline + yellowA
-        return '\x1b[1m\x1b[4m' + theme.current.yellowA + text + '\x1b[39m\x1b[24m\x1b[22m';
+        return '\x1b[1m\x1b[4m' + theme.current.yellowA + prefix + text + '\x1b[39m\x1b[24m\x1b[22m';
       case 2:
         // Bold + yellowA
-        return '\x1b[1m' + theme.current.yellowA + text + '\x1b[39m\x1b[22m';
+        return '\x1b[1m' + theme.current.yellowA + prefix + text + '\x1b[39m\x1b[22m';
       case 3:
         // Bold + yellowB
-        return '\x1b[1m' + theme.current.yellowB + text + '\x1b[39m\x1b[22m';
+        return '\x1b[1m' + theme.current.yellowB + prefix + text + '\x1b[39m\x1b[22m';
       case 4:
         // yellowB (no bold)
-        return theme.current.yellowB + text + '\x1b[39m';
+        return theme.current.yellowB + prefix + text + '\x1b[39m';
       case 5:
       case 6:
       default:
         // gray (subtle)
-        return theme.current.gray + text + '\x1b[39m';
+        return theme.current.gray + prefix + text + '\x1b[39m';
     }
   }
 }
