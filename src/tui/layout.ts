@@ -134,3 +134,79 @@ export function appendLayoutToScreen(screen: any, layout: Layout): void {
   // Set initial focus to preview pane (main content area)
   layout.preview.focus();
 }
+
+/**
+ * Show the explorer pane and adjust preview pane width
+ * @param layout The TUI layout
+ * @param explorerWidth Width of the explorer pane
+ */
+export function showExplorerPane(layout: Layout, explorerWidth: number): void {
+  const screenWidth = process.stdout.columns || 80;
+
+  // Show and size the explorer pane
+  layout.explorer.width = explorerWidth;
+  layout.explorer.left = 0;
+  layout.explorer.hidden = false;
+
+  // Adjust preview pane to account for explorer
+  layout.preview.left = explorerWidth;
+  layout.preview.width = screenWidth - explorerWidth;
+
+  // Force layout refresh
+  layout.explorer.emit('resize');
+  layout.preview.emit('resize');
+}
+
+/**
+ * Hide the explorer pane and expand preview to full width
+ * @param layout The TUI layout
+ */
+export function hideExplorerPane(layout: Layout): void {
+  const screenWidth = process.stdout.columns || 80;
+
+  // Hide the explorer pane
+  layout.explorer.width = 0;
+  layout.explorer.hidden = true;
+
+  // Expand preview pane to full width
+  layout.preview.left = 0;
+  layout.preview.width = screenWidth;
+
+  // Force layout refresh
+  layout.preview.emit('resize');
+}
+
+/**
+ * Update layout dimensions when terminal resizes
+ * @param layout The TUI layout
+ * @param explorerVisible Whether explorer is currently visible
+ * @param explorerWidth Width of explorer pane when visible
+ */
+export function updateLayoutOnResize(layout: Layout, explorerVisible: boolean, explorerWidth: number): void {
+  const screenWidth = process.stdout.columns || 80;
+  const screenHeight = process.stdout.rows || 24;
+
+  // Update all component heights (same for all)
+  const contentHeight = screenHeight - 6; // Minus title (3) and status (3) bars
+  layout.explorer.height = contentHeight;
+  layout.preview.height = contentHeight;
+
+  if (explorerVisible) {
+    // Explorer is visible - maintain proportions
+    layout.explorer.width = explorerWidth;
+    layout.explorer.left = 0;
+    layout.preview.left = explorerWidth;
+    layout.preview.width = screenWidth - explorerWidth;
+  } else {
+    // Explorer hidden - preview takes full width
+    layout.explorer.width = 0;
+    layout.preview.left = 0;
+    layout.preview.width = screenWidth;
+  }
+
+  // Force layout refresh
+  if (explorerVisible) {
+    layout.explorer.emit('resize');
+  }
+  layout.preview.emit('resize');
+}

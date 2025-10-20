@@ -1,10 +1,11 @@
 import blessed from 'neo-blessed';
 import fs from 'fs';
 import { BumblebeeConfig } from './config/loadConfig.js';
-import { createLayout, appendLayoutToScreen } from './tui/layout.js';
+import { createLayout, appendLayoutToScreen, updateLayoutOnResize } from './tui/layout.js';
 import { setupInput } from './tui/input.js';
 import { render } from './render/mdastToAnsi.js';
 import { getThemeForConfig } from './config/theme-bumblebee.js';
+import { createExplorerState, renderExplorer, isExplorerVisible, type ExplorerState } from './tui/panes/explorer.js';
 
 // Cast blessed to any to avoid TypeScript issues
 const blessedAny = blessed as any;
@@ -57,12 +58,16 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
   // Create modular TUI layout
   const layout = createLayout(fileOrDir);
 
+  // Initialize explorer state
+  const explorerState = createExplorerState(fileOrDir, config);
+
   // Append layout components to screen
   appendLayoutToScreen(screen, layout);
 
   // Read and render markdown content for preview
   let markdownContent = '';
   let currentTheme = getThemeForConfig(config.trueColor);
+  let currentFilePath = fileOrDir;
 
   try {
     // Check if file exists and is a file
@@ -91,19 +96,70 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
     screen.render();
   }
 
+  // File opening handler for explorer
+  const handleFileOpen = (filePath: string) => {
+    try {
+      // Check if file exists and is a file
+      if (!fs.existsSync(filePath)) {
+        layout.preview.content = `Error: File not found: ${filePath}`;
+        screen.render();
+        return;
+      }
+
+      const stat = fs.statSync(filePath);
+      if (!stat.isFile()) {
+        layout.preview.content = `Error: ${filePath} is not a file`;
+        screen.render();
+        return;
+      }
+
+      // Read and render the new file
+      markdownContent = fs.readFileSync(filePath, 'utf-8');
+      currentFilePath = filePath;
+
+      // Update status bar with new file path
+      layout.statusBar.content = filePath;
+
+      // Render at current terminal width
+      const width = process.stdout.columns || 80;
+      const rendered = render(markdownContent, width, currentTheme, true);
+      layout.preview.content = rendered;
+
+      // Reset preview scroll position
+      layout.preview.scrollTo(0);
+
+      screen.render();
+    } catch (error) {
+      layout.preview.content = `Error reading file: ${(error as Error).message}`;
+      screen.render();
+    }
+  };
+
   // Set up input handling and keybindings
-  setupInput(screen, layout);
+  setupInput(screen, layout, explorerState, config, handleFileOpen);
 
   // Handle resize with content reflow
   screen.on('resize', function() {
+    // Update layout dimensions for explorer/preview panes
+    const explorerVisible = isExplorerVisible(explorerState);
+    updateLayoutOnResize(layout, explorerVisible, config.explorerWidth);
+
     // Re-render content at new terminal width
     // Use blessed tags (useBlessedTags = true) for TUI mode
     if (markdownContent) {
       const newWidth = process.stdout.columns || 80;
       const rendered = render(markdownContent, newWidth, currentTheme, true);
-
       layout.preview.content = rendered;
     }
+
+    // Update explorer content if visible
+    if (explorerVisible) {
+      const height = layout.explorer.height || 20;
+      const width = layout.explorer.width || config.explorerWidth;
+      const explorerContent = renderExplorer(explorerState, config, height, width);
+      layout.explorer.content = explorerContent;
+    }
+
     screen.render();
   });
 
