@@ -1,6 +1,7 @@
 import { parseMd } from '../parser/mdToAst.js';
 import { wrapText } from './ansi/wrap.js';
 import { getTextWidth } from './ansi/width.js';
+import { renderCodeBlock } from './blocks/code.js';
 import type { BumblebeeTheme } from '../config/theme-bumblebee.js';
 import type { Root, RootContent, Paragraph, Heading, Text, Emphasis, Strong, Link, List, ListItem, Blockquote, Code, Table, TableRow, TableCell } from 'mdast';
 
@@ -61,7 +62,7 @@ function renderNode(node: RootContent, terminalWidth: number, theme: BumblebeeTh
     case 'blockquote':
       return renderBlockquote(node as Blockquote, terminalWidth, theme, useBlessedTags);
     case 'code':
-      return renderCode(node as Code, terminalWidth, theme);
+      return renderCodeBlock(node as Code, terminalWidth, theme);
     case 'table':
       return renderTable(node as Table, terminalWidth, theme);
     default:
@@ -235,30 +236,6 @@ function renderBlockquote(node: Blockquote, terminalWidth: number, theme: Bumble
     const dimmedLine = '\x1b[2m' + line + '\x1b[22m'; // Dim the text
     return border + ' ' + dimmedLine;
   });
-
-  return borderedLines.join('\n');
-}
-
-/**
- * Render a code block (plain, no syntax highlighting yet).
- */
-function renderCode(node: Code, terminalWidth: number, theme: BumblebeeTheme): string {
-  const code = node.value;
-  const lang = node.lang || '';
-
-  // Simple code block with borders
-  const lines = code.split('\n');
-  const borderedLines = lines.map(line => {
-    // Use gray border for code blocks
-    const border = theme.current.gray + '│' + '\x1b[0m';
-    return border + ' ' + line;
-  });
-
-  // Add language badge if present
-  if (lang) {
-    const badge = theme.current.gray + '┤ ' + lang + ' ├' + '\x1b[0m';
-    borderedLines.unshift(badge);
-  }
 
   return borderedLines.join('\n');
 }

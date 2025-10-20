@@ -9,6 +9,7 @@ import { render } from './render/mdastToAnsi.js';
 import { getThemeForConfig } from './config/theme-bumblebee.js';
 import { createExplorerState, renderExplorer, isExplorerVisible, refreshExplorer, type ExplorerState } from './tui/panes/explorer.js';
 import { type TuiRestoreState } from './tui/restore.js';
+import { initializeShiki } from './render/shiki.js';
 
 // Cast blessed to any to avoid TypeScript issues
 const blessedAny = blessed as any;
@@ -91,6 +92,14 @@ function updateFileWatcher(directory: string, explorerState: ExplorerState, layo
 }
 
 export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout: boolean): Promise<void> {
+  // Initialize Shiki for syntax highlighting in code blocks
+  try {
+    await initializeShiki();
+  } catch (error) {
+    console.warn('Failed to initialize Shiki syntax highlighting:', (error as Error).message);
+    // Continue without syntax highlighting - code blocks will render as plain text
+  }
+
   if (stdout) {
     // STDOUT mode: render markdown file to stdout
     try {
