@@ -103,7 +103,7 @@ export function createLayout(fileOrDir: string): Layout {
       fg: theme.yellowB,       // Status text color
       bg: theme.nearBlack,     // Status background color
       border: {
-        fg: theme.yellowB,     // Status border color (matches text)
+        fg: theme.yellowA,     // Status border color (normal border)
       },
     },
     border: {

@@ -15,7 +15,7 @@ export enum Mode {
 /**
  * Set up input handling and keybindings for the Bumblebee TUI
  * Implements Phase 2 keybindings: r, Esc, q, arrows/j/k
- * Implements Phase 3 explorer: Space e, navigation, Enter
+ * Implements Phase 3 explorer: Ctrl+e, navigation, Enter
  */
 export function setupInput(
   screen: any,
@@ -90,8 +90,8 @@ export function setupInput(
     }
   });
 
-  // Explorer toggle keybinding (Space + e)
-  screen.key('space+e', () => {
+  // Explorer toggle keybinding (Ctrl+e)
+  screen.key('C-e', () => {
     if (currentMode === Mode.Normal) {
       toggleExplorer(explorerState);
 
