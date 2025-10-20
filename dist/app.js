@@ -1,12 +1,84 @@
 import blessed from 'neo-blessed';
 import fs from 'fs';
+import path from 'path';
+import chokidar from 'chokidar';
 import { createLayout, appendLayoutToScreen, updateLayoutOnResize } from './tui/layout.js';
 import { setupInput } from './tui/input.js';
 import { render } from './render/mdastToAnsi.js';
 import { getThemeForConfig } from './config/theme-bumblebee.js';
-import { createExplorerState, renderExplorer, isExplorerVisible } from './tui/panes/explorer.js';
+import { createExplorerState, renderExplorer, isExplorerVisible, refreshExplorer } from './tui/panes/explorer.js';
 // Cast blessed to any to avoid TypeScript issues
 const blessedAny = blessed;
+// File watcher instance for explorer auto-refresh
+let fileWatcher = null;
+/**
+ * Set up file watching for explorer auto-refresh
+ */
+function setupFileWatcher(directory, explorerState, layout, config, screen) {
+    // Close existing watcher
+    if (fileWatcher) {
+        fileWatcher.close();
+    }
+    try {
+        // Create new watcher with performance-optimized options
+        fileWatcher = chokidar.watch(directory, {
+            ignored: config.showDotfiles ? [] : (path) => path.includes('/.') || path.includes('\\.'), // Respect dotfile config
+            persistent: true,
+            ignoreInitial: true,
+            awaitWriteFinish: {
+                stabilityThreshold: 100, // Wait 100ms after last change
+                pollInterval: 50
+            },
+            ignorePermissionErrors: true, // Handle permission issues gracefully
+        });
+        // Debounced refresh to group rapid changes (e.g., during git operations)
+        let refreshTimeout = null;
+        const debouncedRefresh = () => {
+            if (refreshTimeout)
+                clearTimeout(refreshTimeout);
+            refreshTimeout = setTimeout(() => {
+                try {
+                    // Only refresh if explorer is visible and watching the right directory
+                    if (explorerState.visible && directory === explorerState.rootPath) {
+                        refreshExplorer(explorerState, config);
+                        // Update the UI
+                        const height = layout.explorer.height || 20;
+                        const width = layout.explorer.width || config.explorerWidth;
+                        const items = renderExplorer(explorerState, config, height, width);
+                        layout.explorer.setItems(items);
+                        layout.explorer.select(explorerState.selectedIndex);
+                        screen.render();
+                    }
+                }
+                catch (error) {
+                    // Log but don't crash on refresh errors
+                    console.warn('Explorer refresh failed:', error.message);
+                }
+            }, 300); // 300ms debounce delay
+        };
+        // Watch for all relevant filesystem events
+        fileWatcher.on('all', (event, path) => {
+            // Only respond to changes in the current explorer directory
+            if (path.startsWith(directory)) {
+                debouncedRefresh();
+            }
+        });
+        // Handle watcher errors gracefully
+        fileWatcher.on('error', (error) => {
+            console.warn('File watcher error:', error.message);
+        });
+    }
+    catch (error) {
+        // Continue without file watching if setup fails
+        console.warn('Failed to setup file watching:', error.message);
+    }
+}
+/**
+ * Update file watcher when directory changes
+ */
+function updateFileWatcher(directory, explorerState, layout, config, screen) {
+    setupFileWatcher(directory, explorerState, layout, config, screen);
+}
 export async function runApp(config, fileOrDir, stdout) {
     if (stdout) {
         // STDOUT mode: render markdown file to stdout
@@ -47,8 +119,16 @@ export async function runApp(config, fileOrDir, stdout) {
     });
     // Create modular TUI layout
     const layout = createLayout(fileOrDir);
+    // Determine explorer root: use parent directory if a file was passed
+    let explorerRoot = fileOrDir;
+    const stat = fs.statSync(fileOrDir);
+    if (stat.isFile()) {
+        explorerRoot = path.dirname(fileOrDir);
+    }
     // Initialize explorer state
-    const explorerState = createExplorerState(fileOrDir, config);
+    const explorerState = createExplorerState(explorerRoot, config);
+    // Set up file watching for explorer auto-refresh
+    setupFileWatcher(explorerRoot, explorerState, layout, config, screen);
     // Append layout components to screen
     appendLayoutToScreen(screen, layout);
     // Read and render markdown content for preview
@@ -116,8 +196,24 @@ export async function runApp(config, fileOrDir, stdout) {
             screen.render();
         }
     };
+    // Create TUI restoration state for Phase 4 edit mode
+    const restoreState = {
+        config,
+        currentFilePath,
+        explorerState,
+        markdownContent,
+        currentTheme,
+        handleFileOpen,
+        updateFileWatcher,
+    };
     // Set up input handling and keybindings
-    setupInput(screen, layout, explorerState, config, handleFileOpen);
+    setupInput(screen, layout, explorerState, config, handleFileOpen, updateFileWatcher, restoreState);
+    // Clean up file watcher on exit
+    process.on('exit', () => {
+        if (fileWatcher) {
+            fileWatcher.close();
+        }
+    });
     // Handle resize with content reflow
     screen.on('resize', function () {
         // Update layout dimensions for explorer/preview panes
@@ -134,8 +230,9 @@ export async function runApp(config, fileOrDir, stdout) {
         if (explorerVisible) {
             const height = layout.explorer.height || 20;
             const width = layout.explorer.width || config.explorerWidth;
-            const explorerContent = renderExplorer(explorerState, config, height, width);
-            layout.explorer.content = explorerContent;
+            const items = renderExplorer(explorerState, config, height, width);
+            layout.explorer.setItems(items);
+            layout.explorer.select(explorerState.selectedIndex);
         }
         screen.render();
     });

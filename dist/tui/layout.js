@@ -35,16 +35,32 @@ export function createLayout(fileOrDir) {
         },
     });
     // Explorer pane: Left side, initially hidden (height 0)
-    // Phase 3 will implement toggle and content
-    const explorer = blessedAny.box({
+    // Phase 3: File tree navigation with scrolling and keyboard support
+    // CRITICAL: Using list() not box() - list renders all items immediately via setItems()
+    const explorer = blessedAny.list({
         top: 3, // Below title bar (title is 3 lines tall)
         left: 0,
         width: 0, // Initially hidden (0 width)
         height: screenHeight - 6, // Full height minus title (3) and status (3) bars
         hidden: true, // Initially hidden
+        scrollable: true, // Allow scrolling for long file lists
+        keys: false, // DISABLED: We handle all keys at screen level to prevent blessed auto-scrolling
+        mouse: true, // Enable mouse events
+        tags: true, // Enable tag parsing for blessed tags (ANSI colors)
+        vi: false, // Disable vi keys (we handle our own)
         style: {
             border: {
                 fg: theme.yellowA, // Normal border color
+            },
+            selected: {
+                bg: theme.cyan, // Selection background
+                fg: theme.nearBlack, // Selection text
+            },
+            item: {
+                fg: 'white', // Normal item color
+            },
+            scrollbar: {
+                bg: theme.cyan, // Scrollbar color
             },
         },
         border: {
@@ -87,7 +103,7 @@ export function createLayout(fileOrDir) {
             fg: theme.yellowB, // Status text color
             bg: theme.nearBlack, // Status background color
             border: {
-                fg: theme.yellowB, // Status border color (matches text)
+                fg: theme.yellowA, // Status border color (normal border)
             },
         },
         border: {
@@ -113,7 +129,7 @@ export function appendLayoutToScreen(screen, layout) {
     screen.append(layout.preview);
     screen.append(layout.statusBar);
     // Set initial focus to preview pane (main content area)
-    layout.preview.focus();
+    focusPreviewPane(layout);
 }
 /**
  * Show the explorer pane and adjust preview pane width
@@ -147,6 +163,20 @@ export function hideExplorerPane(layout) {
     layout.preview.width = screenWidth;
     // Force layout refresh
     layout.preview.emit('resize');
+}
+/**
+ * Set focus to the explorer pane
+ * Updates blessed focus for keyboard input handling
+ */
+export function focusExplorerPane(layout) {
+    layout.explorer.focus();
+}
+/**
+ * Set focus to the preview pane
+ * Updates blessed focus for keyboard input handling
+ */
+export function focusPreviewPane(layout) {
+    layout.preview.focus();
 }
 /**
  * Update layout dimensions when terminal resizes

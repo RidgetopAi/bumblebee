@@ -1,5 +1,6 @@
 import blessed from 'neo-blessed';
 import fs from 'fs';
+import path from 'path';
 import chokidar from 'chokidar';
 import { BumblebeeConfig } from './config/loadConfig.js';
 import { createLayout, appendLayoutToScreen, updateLayoutOnResize, type Layout } from './tui/layout.js';
@@ -7,6 +8,7 @@ import { setupInput } from './tui/input.js';
 import { render } from './render/mdastToAnsi.js';
 import { getThemeForConfig } from './config/theme-bumblebee.js';
 import { createExplorerState, renderExplorer, isExplorerVisible, refreshExplorer, type ExplorerState } from './tui/panes/explorer.js';
+import { type TuiRestoreState } from './tui/restore.js';
 
 // Cast blessed to any to avoid TypeScript issues
 const blessedAny = blessed as any;
@@ -49,8 +51,9 @@ function setupFileWatcher(directory: string, explorerState: ExplorerState, layou
             // Update the UI
             const height = layout.explorer.height || 20;
             const width = layout.explorer.width || config.explorerWidth;
-            const content = renderExplorer(explorerState, config, height, width);
-            layout.explorer.content = content;
+            const items = renderExplorer(explorerState, config, height, width);
+            layout.explorer.setItems(items);
+            layout.explorer.select(explorerState.selectedIndex);
 
             screen.render();
           }
@@ -135,11 +138,18 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
   // Create modular TUI layout
   const layout = createLayout(fileOrDir);
 
+  // Determine explorer root: use parent directory if a file was passed
+  let explorerRoot = fileOrDir;
+  const stat = fs.statSync(fileOrDir);
+  if (stat.isFile()) {
+    explorerRoot = path.dirname(fileOrDir);
+  }
+
   // Initialize explorer state
-  const explorerState = createExplorerState(fileOrDir, config);
+  const explorerState = createExplorerState(explorerRoot, config);
 
   // Set up file watching for explorer auto-refresh
-  setupFileWatcher(fileOrDir, explorerState, layout, config, screen);
+  setupFileWatcher(explorerRoot, explorerState, layout, config, screen);
 
   // Append layout components to screen
   appendLayoutToScreen(screen, layout);
@@ -215,8 +225,19 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
     }
   };
 
+  // Create TUI restoration state for Phase 4 edit mode
+  const restoreState: TuiRestoreState = {
+    config,
+    currentFilePath,
+    explorerState,
+    markdownContent,
+    currentTheme,
+    handleFileOpen,
+    updateFileWatcher,
+  };
+
   // Set up input handling and keybindings
-  setupInput(screen, layout, explorerState, config, handleFileOpen, updateFileWatcher);
+  setupInput(screen, layout, explorerState, config, handleFileOpen, updateFileWatcher, restoreState);
 
   // Clean up file watcher on exit
   process.on('exit', () => {
@@ -243,8 +264,9 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
     if (explorerVisible) {
       const height = layout.explorer.height || 20;
       const width = layout.explorer.width || config.explorerWidth;
-      const explorerContent = renderExplorer(explorerState, config, height, width);
-      layout.explorer.content = explorerContent;
+      const items = renderExplorer(explorerState, config, height, width);
+      layout.explorer.setItems(items);
+      layout.explorer.select(explorerState.selectedIndex);
     }
 
     screen.render();

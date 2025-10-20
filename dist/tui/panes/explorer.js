@@ -1,3 +1,4 @@
+import path from 'path';
 import { scanDirectoryTree, flattenFileTree, findNodeByPath } from '../../utils/fsTree.js';
 import { bumblebeeTheme } from '../../config/theme-bumblebee.js';
 /**
@@ -6,7 +7,7 @@ import { bumblebeeTheme } from '../../config/theme-bumblebee.js';
 export function createExplorerState(rootPath, config) {
     const tree = scanDirectoryTree(rootPath, config);
     const flattened = tree ? flattenFileTree(tree) : [];
-    return {
+    const state = {
         rootPath,
         tree,
         flattened,
@@ -14,6 +15,38 @@ export function createExplorerState(rootPath, config) {
         expandedDirs: new Set([rootPath]), // Root is always expanded
         visible: false, // Initially hidden
     };
+    // Add parent directory entry if not at filesystem root
+    addParentDirectoryEntry(state);
+    return state;
+}
+/**
+ * Check if the given path is at the filesystem root
+ */
+function isAtFilesystemRoot(rootPath) {
+    return path.dirname(rootPath) === rootPath;
+}
+/**
+ * Add parent directory ("..") entry to the flattened list if not at root
+ */
+function addParentDirectoryEntry(state) {
+    if (isAtFilesystemRoot(state.rootPath))
+        return;
+    const parentPath = path.dirname(state.rootPath) + path.sep + '..';
+    state.flattened.unshift(parentPath);
+}
+/**
+ * Navigate to a new directory, updating the explorer state
+ */
+function navigateToDirectory(state, targetPath, config) {
+    state.rootPath = targetPath;
+    state.tree = scanDirectoryTree(targetPath, config);
+    state.flattened = state.tree ? flattenFileTree(state.tree) : [];
+    // Add parent directory entry if applicable
+    addParentDirectoryEntry(state);
+    // Reset selection and expansion state
+    state.selectedIndex = 0;
+    state.expandedDirs.clear();
+    state.expandedDirs.add(targetPath);
 }
 /**
  * Get the currently selected file/directory path
@@ -66,83 +99,71 @@ export function toggleDirectory(state, path) {
 }
 /**
  * Handle Enter key on selected item
- * Returns the path to open, or null if directory was toggled
+ * Returns the path to open, or null if directory navigation occurred
  */
-export function handleEnter(state) {
+export function handleEnter(state, config) {
     const selectedPath = getSelectedPath(state);
+    if (!selectedPath)
+        return null;
+    // Handle parent directory navigation ("..")
+    if (selectedPath.endsWith(path.sep + '..')) {
+        const parentPath = path.dirname(state.rootPath);
+        if (parentPath !== state.rootPath) {
+            navigateToDirectory(state, parentPath, config);
+        }
+        return null;
+    }
+    // Handle regular directory navigation
     const selectedNode = getSelectedNode(state);
-    if (!selectedPath || !selectedNode)
-        return null;
-    if (selectedNode.type === 'directory') {
-        // Toggle directory expansion
-        toggleDirectory(state, selectedPath);
+    if (selectedNode?.type === 'directory') {
+        navigateToDirectory(state, selectedPath, config);
         return null;
     }
-    else {
-        // Return file path to open
-        return selectedPath;
-    }
+    // Return file path to open
+    return selectedPath;
 }
 /**
- * Render the explorer pane content as a string
+ * Render the explorer pane as an array of items for blessed.list()
+ * Returns array of strings that will be set via setItems()
  */
 export function renderExplorer(state, config, height, width) {
     if (!state.tree || !state.visible) {
-        return '';
+        return [];
     }
-    const lines = [];
+    const items = [];
     const theme = bumblebeeTheme.current;
-    // Render tree recursively
-    function renderNode(node, depth, isLast) {
-        if (lines.length >= height)
-            return; // Don't exceed available height
-        const isSelected = state.flattened[state.selectedIndex] === node.path;
-        const prefix = buildPrefix(depth, isLast);
+    // Render all items in flattened list (blessed.list handles viewport/scrolling)
+    for (let i = 0; i < state.flattened.length; i++) {
+        const itemPath = state.flattened[i];
         // Build the line content
         let line = '';
-        // Selection highlight
-        if (isSelected) {
-            line += `${theme.cyan}► `;
+        // Handle ".." entries specially
+        if (itemPath.endsWith(path.sep + '..')) {
+            line += '↩️  ..';
         }
         else {
-            line += '  ';
-        }
-        // Tree structure prefix
-        line += prefix;
-        // Directory/file indicator
-        if (node.type === 'directory') {
-            const isExpanded = state.expandedDirs.has(node.path);
-            line += isExpanded ? '▼ ' : '▶ ';
-        }
-        else if (node.type === 'symlink') {
-            line += '↗ ';
-        }
-        else {
-            line += '  ';
-        }
-        // Node name
-        line += node.name;
-        // Apply selection colors
-        if (isSelected) {
-            line = `${theme.cyan}${line}${theme.nearBlack}`;
-        }
-        lines.push(line);
-        // Render children if directory is expanded
-        if (node.type === 'directory' && node.children && state.expandedDirs.has(node.path)) {
-            for (let i = 0; i < node.children.length; i++) {
-                const child = node.children[i];
-                const childIsLast = i === node.children.length - 1;
-                renderNode(child, depth + 1, childIsLast);
+            // Regular file/directory
+            const node = state.tree ? findNodeByPath(state.tree, itemPath) : null;
+            if (node) {
+                if (node.type === 'directory') {
+                    line += '📁 ' + node.name;
+                }
+                else if (node.type === 'symlink') {
+                    line += '↗ ' + node.name;
+                }
+                else {
+                    line += '📄 ' + node.name;
+                }
+            }
+            else {
+                // Fallback for items not found in tree (shouldn't happen)
+                const name = path.basename(itemPath);
+                line += '❓ ' + name;
             }
         }
+        items.push(line);
     }
-    // Start rendering from root
-    renderNode(state.tree, 0, true);
-    // Fill remaining height with empty lines
-    while (lines.length < height) {
-        lines.push('');
-    }
-    return lines.join('\n');
+    return items;
 }
 /**
  * Build tree prefix for visual hierarchy (like NvimTree)
@@ -188,6 +209,8 @@ export function refreshExplorer(state, config) {
     // Re-scan the directory tree
     state.tree = scanDirectoryTree(state.rootPath, config);
     state.flattened = state.tree ? flattenFileTree(state.tree) : [];
+    // Add parent directory entry if applicable
+    addParentDirectoryEntry(state);
     // Ensure selection is still valid
     if (state.selectedIndex >= state.flattened.length) {
         state.selectedIndex = Math.max(0, state.flattened.length - 1);

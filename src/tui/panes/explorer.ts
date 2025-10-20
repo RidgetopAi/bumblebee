@@ -154,30 +154,23 @@ export function handleEnter(state: ExplorerState, config: BumblebeeConfig): stri
 }
 
 /**
- * Render the explorer pane content as a string
+ * Render the explorer pane as an array of items for blessed.list()
+ * Returns array of strings that will be set via setItems()
  */
-export function renderExplorer(state: ExplorerState, config: BumblebeeConfig, height: number, width: number): string {
+export function renderExplorer(state: ExplorerState, config: BumblebeeConfig, height: number, width: number): string[] {
   if (!state.tree || !state.visible) {
-    return '';
+    return [];
   }
 
-  const lines: string[] = [];
+  const items: string[] = [];
   const theme = bumblebeeTheme.current;
 
-  // Render flattened list (including ".." entries)
-  for (let i = 0; i < state.flattened.length && lines.length < height; i++) {
+  // Render all items in flattened list (blessed.list handles viewport/scrolling)
+  for (let i = 0; i < state.flattened.length; i++) {
     const itemPath = state.flattened[i];
-    const isSelected = i === state.selectedIndex;
 
     // Build the line content
     let line = '';
-
-    // Selection highlight
-    if (isSelected) {
-      line += `${theme.cyan}► `;
-    } else {
-      line += '  ';
-    }
 
     // Handle ".." entries specially
     if (itemPath.endsWith(path.sep + '..')) {
@@ -200,20 +193,10 @@ export function renderExplorer(state: ExplorerState, config: BumblebeeConfig, he
       }
     }
 
-    // Apply selection colors
-    if (isSelected) {
-      line = `${theme.cyan}${line}${theme.nearBlack}`;
-    }
-
-    lines.push(line);
+    items.push(line);
   }
 
-  // Fill remaining height with empty lines
-  while (lines.length < height) {
-    lines.push('');
-  }
-
-  return lines.join('\n');
+  return items;
 }
 
 /**

@@ -49,16 +49,32 @@ export function createLayout(fileOrDir: string): Layout {
   });
 
   // Explorer pane: Left side, initially hidden (height 0)
-  // Phase 3 will implement toggle and content
-  const explorer = blessedAny.box({
+  // Phase 3: File tree navigation with scrolling and keyboard support
+  // CRITICAL: Using list() not box() - list renders all items immediately via setItems()
+  const explorer = blessedAny.list({
     top: 3,                    // Below title bar (title is 3 lines tall)
     left: 0,
     width: 0,                  // Initially hidden (0 width)
     height: screenHeight - 6,  // Full height minus title (3) and status (3) bars
     hidden: true,              // Initially hidden
+    scrollable: true,          // Allow scrolling for long file lists
+    keys: false,               // DISABLED: We handle all keys at screen level to prevent blessed auto-scrolling
+    mouse: true,               // Enable mouse events
+    tags: true,                // Enable tag parsing for blessed tags (ANSI colors)
+    vi: false,                 // Disable vi keys (we handle our own)
     style: {
       border: {
         fg: theme.yellowA,     // Normal border color
+      },
+      selected: {
+        bg: theme.cyan,        // Selection background
+        fg: theme.nearBlack,   // Selection text
+      },
+      item: {
+        fg: 'white',           // Normal item color
+      },
+      scrollbar: {
+        bg: theme.cyan,        // Scrollbar color
       },
     },
     border: {

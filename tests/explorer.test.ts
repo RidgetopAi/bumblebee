@@ -134,30 +134,34 @@ describe('Explorer Pane', () => {
       const state = createExplorerState(testDir, defaultConfig);
       state.visible = true;
 
-      const content = renderExplorer(state, defaultConfig, 10, 28);
+      const items = renderExplorer(state, defaultConfig, 10, 28);
 
-      expect(typeof content).toBe('string');
-      expect(content.length).toBeGreaterThan(0);
-      expect(content.includes('test-dir')).toBe(true); // Root directory name
+      expect(Array.isArray(items)).toBe(true);
+      expect(items.length).toBeGreaterThan(0);
+      expect(items.some(item => item.includes('test-dir'))).toBe(true); // Root directory name
     });
 
-    it('should return empty string when not visible', () => {
+    it('should return empty array when not visible', () => {
       const state = createExplorerState(testDir, defaultConfig);
       state.visible = false;
 
-      const content = renderExplorer(state, defaultConfig, 10, 28);
+      const items = renderExplorer(state, defaultConfig, 10, 28);
 
-      expect(content).toBe('');
+      expect(Array.isArray(items)).toBe(true);
+      expect(items.length).toBe(0);
     });
 
-    it('should highlight selected item', () => {
+    it('should render all items without selection indicators (blessed.list handles selection)', () => {
       const state = createExplorerState(testDir, defaultConfig);
       state.visible = true;
 
-      const content = renderExplorer(state, defaultConfig, 20, 28);
+      const items = renderExplorer(state, defaultConfig, 20, 28);
 
-      // Should contain selection indicator (►)
-      expect(content.includes('►')).toBe(true);
+      // Should return array of items
+      expect(Array.isArray(items)).toBe(true);
+      expect(items.length).toBeGreaterThan(0);
+      // Selection indicator (►) should NOT be in items - blessed.list handles that
+      expect(items.every(item => !item.includes('►'))).toBe(true);
     });
   });
 
