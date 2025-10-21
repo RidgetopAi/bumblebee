@@ -53,7 +53,7 @@ export async function restoreTui(state) {
     const explorerRoot = explorerState.rootPath;
     updateFileWatcher(explorerRoot, explorerState, layout, config, screen);
     // Re-bind resize handler
-    screen.on('resize', function () {
+    screen.on('resize', async function () {
         // Update layout dimensions for explorer/preview panes
         const explorerVisibleNow = isExplorerVisible(explorerState);
         updateLayoutOnResize(layout, explorerVisibleNow, config.explorerWidth);
