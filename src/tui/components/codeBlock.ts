@@ -85,11 +85,10 @@ export function createCodeBlockWidget(code: string, lang: string = '', width: nu
     scrollable: false, // Let parent handle scrolling
   });
 
-  // FIX: Blessed creates labels with visible: false by default
-  // We need to explicitly make them visible
+  // FIX: Ensure label is not hidden
+  // Note: 'visible' is a read-only getter; only 'hidden' property can be set
   if (widget._label) {
-    widget._label.visible = true;
-    widget._label.hidden = false;
+    widget._label.hidden = false;  // or use widget._label.show()
   }
 
   return widget;
