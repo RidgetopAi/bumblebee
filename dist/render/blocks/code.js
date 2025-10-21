@@ -1,6 +1,21 @@
 import { codeToAnsi } from '../shiki.js';
 import { wrapText } from '../ansi/wrap.js';
 import { getTextWidth } from '../ansi/width.js';
+import highlight from 'cli-highlight';
+/**
+ * Render code using cli-highlight as fallback
+ * Provides basic syntax highlighting when Shiki is unavailable
+ */
+function renderCodeWithCliHighlight(code, lang) {
+    try {
+        // Use cli-highlight with default theme for basic syntax highlighting
+        return highlight(code, { language: lang });
+    }
+    catch (error) {
+        // If cli-highlight fails, return plain text
+        return code;
+    }
+}
 /**
  * Render a code block with syntax highlighting and Bumblebee styling
  *
@@ -11,6 +26,7 @@ import { getTextWidth } from '../ansi/width.js';
  * - Language badge in top-right corner (┤ Lang ├)
  * - Line wrapping for long lines
  * - Indentation guides (faint │ every 4 columns)
+ * - Fallback system: Shiki → cli-highlight → plain text
  *
  * @param node - MDAST Code node
  * @param terminalWidth - Terminal width for wrapping
@@ -20,10 +36,10 @@ import { getTextWidth } from '../ansi/width.js';
 export function renderCodeBlock(node, terminalWidth, theme) {
     const code = node.value;
     const lang = node.lang || '';
-    // Get syntax-highlighted ANSI code
+    // Get syntax-highlighted ANSI code with fallback hierarchy
     let highlightedCode;
     try {
-        // Use Shiki for syntax highlighting if language is specified
+        // Try Shiki first (best quality highlighting)
         if (lang) {
             highlightedCode = codeToAnsi(code, lang, 'truecolor');
         }
@@ -33,8 +49,19 @@ export function renderCodeBlock(node, terminalWidth, theme) {
         }
     }
     catch (error) {
-        // Fallback to plain text if highlighting fails
-        highlightedCode = code;
+        // Shiki failed, try cli-highlight as intermediate fallback
+        try {
+            if (lang) {
+                highlightedCode = renderCodeWithCliHighlight(code, lang);
+            }
+            else {
+                highlightedCode = code;
+            }
+        }
+        catch (fallbackError) {
+            // Both highlighting methods failed, use plain text
+            highlightedCode = code;
+        }
     }
     // Split code into lines
     const codeLines = highlightedCode.split('\n');
@@ -74,7 +101,22 @@ export function renderCodeBlock(node, terminalWidth, theme) {
  * Fallback renderer for plain code blocks when Shiki is not available
  */
 function renderPlainCodeBlock(code, lang, terminalWidth, theme) {
-    const lines = code.split('\n');
+    // Apply the same fallback logic as renderCodeBlock
+    let highlightedCode;
+    try {
+        // Try cli-highlight for basic highlighting
+        if (lang) {
+            highlightedCode = renderCodeWithCliHighlight(code, lang);
+        }
+        else {
+            highlightedCode = code;
+        }
+    }
+    catch (error) {
+        // cli-highlight failed, use plain text
+        highlightedCode = code;
+    }
+    const lines = highlightedCode.split('\n');
     // Calculate content width (terminal width minus borders and padding)
     const borderWidth = 2; // │ on each side
     const paddingWidth = 2; // 1 space padding on each side
