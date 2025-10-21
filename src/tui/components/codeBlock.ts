@@ -1,7 +1,8 @@
 import type { Code } from 'mdast';
+import blessed from 'neo-blessed';
 
 // Cast blessed to any to avoid TypeScript issues (neo-blessed has no types)
-const blessedAny = (await import('neo-blessed')).default as any;
+const blessedAny = blessed as any;
 
 /**
  * Add padding to a code line to fill the widget content area

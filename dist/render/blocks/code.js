@@ -393,7 +393,6 @@ function renderCodeWithCliHighlight(code, lang) {
  * - 1 column padding inside borders
  * - Language badge in top-right corner (┤ Lang ├)
  * - Line wrapping for long lines
- * - Indentation guides (faint │ every 4 columns)
  * - Fallback system: Shiki → cli-highlight → plain text
  *
  * @param node - MDAST Code node
@@ -460,23 +459,23 @@ export async function renderCodeBlock(node, terminalWidth, theme, useBlessedTags
     const borderWidth = 2; // │ on each side
     const paddingWidth = 2; // 1 space padding on each side
     const contentWidth = terminalWidth - borderWidth - paddingWidth;
-    // Wrap long lines and add indentation guides
+    // Wrap long lines
     const wrappedLines = codeLines.flatMap(line => wrapCodeLine(line, contentWidth));
-    // Create content lines with borders, padding, and indentation guides
+    // Create content lines with borders and padding
     const contentLines = wrappedLines.map((line, index) => {
-        // Add indentation guides (faint │ every 4 columns in the content area)
-        const lineWithGuides = addIndentationGuides(line, contentWidth, theme, useBlessedTags);
+        // Add padding to fill content area
+        const paddedLine = addPadding(line, contentWidth, theme, useBlessedTags);
         if (useBlessedTags) {
             // TUI mode: No side borders (blessed pane already has borders)
             // Just add padding and content
-            return '  ' + lineWithGuides + '  ';
+            return '  ' + paddedLine + '  ';
         }
         else {
             // Stdout mode: Full borders with │ on each side
             const leftBorder = theme.current.yellowA + '│' + '\x1b[39m';
             const rightBorder = theme.current.yellowA + '│' + '\x1b[39m';
             const padding = ' ';
-            return leftBorder + padding + lineWithGuides + padding + rightBorder;
+            return leftBorder + padding + paddedLine + padding + rightBorder;
         }
     });
     // Create top border with language badge if specified
@@ -546,15 +545,15 @@ function renderPlainCodeBlock(code, lang, terminalWidth, theme) {
     const topBorder = theme.current.yellowA + '─'.repeat(terminalWidth - 2) + '\x1b[39m';
     // Create bottom border (same as top)
     const bottomBorder = topBorder;
-    // Create content lines with borders, padding, and indentation guides
+    // Create content lines with borders and padding
     const contentLines = wrappedLines.map((line, index) => {
-        // Add indentation guides (faint │ every 4 columns in the content area)
-        const lineWithGuides = addIndentationGuides(line, contentWidth, theme, false);
+        // Add padding to fill content area
+        const paddedLine = addPadding(line, contentWidth, theme, false);
         // Create the full line: │ padding content padding │
         const leftBorder = theme.current.yellowA + '│' + '\x1b[39m';
         const rightBorder = theme.current.yellowA + '│' + '\x1b[39m';
         const padding = ' ';
-        return leftBorder + padding + lineWithGuides + padding + rightBorder;
+        return leftBorder + padding + paddedLine + padding + rightBorder;
     });
     // Add language badge to top-right if language is specified
     let finalLines = contentLines;
@@ -587,31 +586,17 @@ function wrapCodeLine(line, maxWidth) {
     return wrapped.split('\n');
 }
 /**
-* Add indentation guides (faint │) every 4 columns
+* Add padding to code lines to fill the content area
 */
-function addIndentationGuides(line, contentWidth, theme, useBlessedTags) {
+function addPadding(line, contentWidth, theme, useBlessedTags) {
     // Calculate the visible width of the line (excluding ANSI codes)
     const visibleWidth = getTextWidth(line);
     // If the line is already at full width, return as-is
     if (visibleWidth >= contentWidth) {
         return line;
     }
-    // In TUI mode, skip indentation guides to avoid blessed tag parsing issues
-    // Just add plain space padding instead
-    if (useBlessedTags) {
-        const padding = ' '.repeat(contentWidth - visibleWidth);
-        return line + padding;
-    }
-    // Add padding with indentation guides (stdout mode only)
-    let padding = '';
-    for (let i = visibleWidth; i < contentWidth; i++) {
-        if ((i + 1) % 4 === 0) { // +1 because positions are 1-indexed in the content area
-            padding += theme.current.gray + '│' + '\x1b[39m';
-        }
-        else {
-            padding += ' ';
-        }
-    }
+    // Add plain space padding (no indentation guides)
+    const padding = ' '.repeat(contentWidth - visibleWidth);
     return line + padding;
 }
 /**
