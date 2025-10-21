@@ -34,12 +34,12 @@ describe('MDAST Renderer', () => {
   }
 
   describe('Simple fixture (simple.md)', () => {
-    it('renders without crashing', () => {
-      expectNoCrash('simple.md');
+    it('renders without crashing', async () => {
+      await expectNoCrash('simple.md');
     });
 
-    it('contains expected heading structure', () => {
-      const output = renderFixture('simple.md');
+    it('contains expected heading structure', async () => {
+      const output = await renderFixture('simple.md');
       expectContainsAnsi(output);
 
       // Check for heading prefixes in plain text
@@ -53,8 +53,8 @@ describe('MDAST Renderer', () => {
       ]);
     });
 
-    it('contains formatted text (bold and italic)', () => {
-      const output = renderFixture('simple.md');
+    it('contains formatted text (bold and italic)', async () => {
+      const output = await renderFixture('simple.md');
       const plain = stripAnsi(output);
 
       // The renderer converts markdown formatting to plain text with ANSI codes
@@ -64,12 +64,12 @@ describe('MDAST Renderer', () => {
       expect(plain).toContain('bold italic');
     });
 
-    it('wraps text at different widths', () => {
-      const output80 = renderFixture('simple.md', 80);
-      const output120 = renderFixture('simple.md', 120);
+    it('wraps text at different widths', async () => {
+      const output80 = await renderFixture('simple.md', 80);
+      const output120 = await renderFixture('simple.md', 120);
 
-      expectNoCrash('simple.md', 80);
-      expectNoCrash('simple.md', 120);
+      await expectNoCrash('simple.md', 80);
+      await expectNoCrash('simple.md', 120);
 
       // Content should be the same, just wrapped differently
       const plain80 = stripAnsi(output80);
@@ -83,23 +83,23 @@ describe('MDAST Renderer', () => {
   });
 
   describe('Tables fixture (tables.md)', () => {
-    it('renders without crashing', () => {
-      expectNoCrash('tables.md');
-    });
+  it('renders without crashing', async () => {
+  await expectNoCrash('tables.md');
+  });
 
-    it('contains table structure with separators', () => {
-      const output = renderFixture('tables.md');
-      expectContainsAnsi(output);
+  it('contains table structure with separators', async () => {
+  const output = await renderFixture('tables.md');
+  expectContainsAnsi(output);
 
-      // Check for table separators and structure
-      const plain = stripAnsi(output);
-      expect(plain).toMatch(/\|/); // Contains pipe separators
-      expect(plain).toMatch(/-+/); // Contains dash separators
-    });
+  // Check for table separators and structure
+  const plain = stripAnsi(output);
+  expect(plain).toMatch(/\|/); // Contains pipe separators
+  expect(plain).toMatch(/-+/); // Contains dash separators
+  });
 
-    it('handles different table alignments', () => {
-      const output = renderFixture('tables.md');
-      const plain = stripAnsi(output);
+  it('handles different table alignments', async () => {
+  const output = await renderFixture('tables.md');
+  const plain = stripAnsi(output);
 
       // Should contain various table content
       expect(plain).toContain('Header 1');
@@ -115,12 +115,12 @@ describe('MDAST Renderer', () => {
   });
 
   describe('Code blocks fixture (code-blocks.md)', () => {
-    it('renders without crashing', () => {
-      expectNoCrash('code-blocks.md');
+    it('renders without crashing', async () => {
+      await expectNoCrash('code-blocks.md');
     });
 
-    it('contains code block borders and language badges', () => {
-      const output = renderFixture('code-blocks.md');
+    it('contains code block borders and language badges', async () => {
+      const output = await renderFixture('code-blocks.md');
       expectContainsAnsi(output);
 
       const plain = stripAnsi(output);
@@ -136,56 +136,56 @@ describe('MDAST Renderer', () => {
       // expect(plain).toContain('inline code');
     });
 
-    it('renders code blocks with borders', () => {
-      const output = renderFixture('code-blocks.md');
+    it('renders code blocks with borders', async () => {
+      const output = await renderFixture('code-blocks.md');
 
       // Should contain border characters (│)
       expect(output).toContain('│');
     });
 
-    it('handles empty code blocks', () => {
-      const output = renderFixture('code-blocks.md');
-      expectNoCrash('code-blocks.md', 80);
+    it('handles empty code blocks', async () => {
+      const output = await renderFixture('code-blocks.md');
+      await expectNoCrash('code-blocks.md', 80);
     });
   });
 
   describe('Complex fixture (complex.md)', () => {
-    it('renders without crashing', () => {
-      expectNoCrash('complex.md');
-    });
+  it('renders without crashing', async () => {
+  await expectNoCrash('complex.md');
+  });
 
-    it('contains all supported MDAST node types', () => {
-      const output = renderFixture('complex.md');
-      expectContainsAnsi(output);
+  it('contains all supported MDAST node types', async () => {
+  const output = await renderFixture('complex.md');
+  expectContainsAnsi(output);
 
-      const plain = stripAnsi(output);
+  const plain = stripAnsi(output);
 
-      // Check for various node types
-      expect(plain).toMatch(/^# /m); // Headings
-      expect(plain).toContain('bold text'); // Bold (converted from **bold text**)
-      expect(plain).toContain('italic text'); // Italic (converted from *italic text*)
-      // Note: Inline code not yet implemented in renderer
-      // expect(plain).toContain('inline code'); // Code (converted from `inline code`)
-      // Note: Link URL rendering may vary
-      // expect(plain).toContain('https://example.com'); // Links (converted to text + URL)
-      expect(plain).toMatch(/^\d+\. /m); // Ordered lists
-      expect(plain).toMatch(/^• /m); // Unordered lists
-      expect(plain).toContain('|'); // Tables
-      expect(plain).toContain('│'); // Code blocks and blockquotes (borders)
-    });
+  // Check for various node types
+  expect(plain).toMatch(/^# /m); // Headings
+  expect(plain).toContain('bold text'); // Bold (converted from **bold text**)
+  expect(plain).toContain('italic text'); // Italic (converted from *italic text*)
+  // Note: Inline code not yet implemented in renderer
+  // expect(plain).toContain('inline code'); // Code (converted from `inline code`)
+  // Note: Link URL rendering may vary
+  // expect(plain).toContain('https://example.com'); // Links (converted to text + URL)
+  expect(plain).toMatch(/^\d+\. /m); // Ordered lists
+  expect(plain).toMatch(/^• /m); // Unordered lists
+  expect(plain).toContain('|'); // Tables
+  expect(plain).toContain('│'); // Code blocks and blockquotes (borders)
+  });
 
-    it('handles nested structures correctly', () => {
-      const output = renderFixture('complex.md');
-      expectNoCrash('complex.md', 80);
+  it('handles nested structures correctly', async () => {
+  const output = await renderFixture('complex.md');
+  await expectNoCrash('complex.md', 80);
 
-      // Complex fixture should render all nested elements
-      expect(output).toContain('│'); // Borders for quotes and code
-    });
+  // Complex fixture should render all nested elements
+  expect(output).toContain('│'); // Borders for quotes and code
+  });
 
-    it('wraps complex content at different widths', () => {
-      expectNoCrash('complex.md', 80);
-      expectNoCrash('complex.md', 120);
-    });
+  it('wraps complex content at different widths', async () => {
+  await expectNoCrash('complex.md', 80);
+  await expectNoCrash('complex.md', 120);
+  });
   });
 
   describe('Text wrapping behavior', () => {
@@ -200,11 +200,11 @@ describe('MDAST Renderer', () => {
         }
       });
 
-      it(`produces consistent content at ${width} characters`, () => {
+      it(`produces consistent content at ${width} characters`, async () => {
         const fixtures = ['simple.md', 'tables.md', 'code-blocks.md', 'complex.md'];
 
         for (const fixture of fixtures) {
-          const output = renderFixture(fixture, width);
+          const output = await renderFixture(fixture, width);
           const plain = stripAnsi(output);
 
           // Content should be present and properly formatted
@@ -216,20 +216,20 @@ describe('MDAST Renderer', () => {
   });
 
   describe('ANSI code validation', () => {
-    it('applies ANSI formatting to content', () => {
-      const output = renderFixture('simple.md');
+  it('applies ANSI formatting to content', async () => {
+  const output = await renderFixture('simple.md');
 
-      // Should contain ANSI escape sequences
-      expect(output).toMatch(/\x1b\[/); // Any ANSI code present
-    });
+  // Should contain ANSI escape sequences
+  expect(output).toMatch(/\x1b\[/); // Any ANSI code present
+  });
 
-    it('applies ANSI formatting to complex content', () => {
-      // Use complex fixture which has various formatting
-      const output = renderFixture('complex.md');
+  it('applies ANSI formatting to complex content', async () => {
+  // Use complex fixture which has various formatting
+  const output = await renderFixture('complex.md');
 
-      // Should contain ANSI escape sequences
-      expect(output).toMatch(/\x1b\[/); // Any ANSI code present
-    });
+  // Should contain ANSI escape sequences
+  expect(output).toMatch(/\x1b\[/); // Any ANSI code present
+  });
 
     // Note: Detailed ANSI code checks removed due to theme detection complexity
     // The important thing is that ANSI formatting is applied

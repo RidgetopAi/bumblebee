@@ -17,26 +17,26 @@ import { renderCodeBlock } from './blocks/code.js';
  * @example
  * ```typescript
  * import { bumblebeeTheme } from '../config/theme-bumblebee.js';
- * const output = render('# Hello World\n\nThis is a paragraph.', 80, bumblebeeTheme, false);
+ * const output = await render('# Hello World\n\nThis is a paragraph.', 80, bumblebeeTheme, false);
  * console.log(output); // ANSI-formatted output
  * ```
  */
-export function render(markdown, width, theme, useBlessedTags = false) {
+export async function render(markdown, width, theme, useBlessedTags = false) {
     const ast = parseMd(markdown);
-    return renderRoot(ast, width, theme, useBlessedTags);
+    return await renderRoot(ast, width, theme, useBlessedTags);
 }
 /**
  * Render the root document node by joining all child nodes with newlines.
  */
-function renderRoot(node, terminalWidth, theme, useBlessedTags) {
-    const children = node.children.map(child => renderNode(child, terminalWidth, theme, useBlessedTags));
+async function renderRoot(node, terminalWidth, theme, useBlessedTags) {
+    const children = await Promise.all(node.children.map(child => renderNode(child, terminalWidth, theme, useBlessedTags)));
     return children.join('\n\n');
 }
 /**
  * Render a single MDAST node to ANSI-formatted string.
  * Dispatches to specific handler functions based on node type.
  */
-function renderNode(node, terminalWidth, theme, useBlessedTags) {
+async function renderNode(node, terminalWidth, theme, useBlessedTags) {
     switch (node.type) {
         case 'paragraph':
             return renderParagraph(node, terminalWidth, theme);
@@ -57,7 +57,7 @@ function renderNode(node, terminalWidth, theme, useBlessedTags) {
         case 'blockquote':
             return renderBlockquote(node, terminalWidth, theme, useBlessedTags);
         case 'code':
-            return renderCodeBlock(node, terminalWidth, theme);
+            return await renderCodeBlock(node, terminalWidth, theme);
         case 'table':
             return renderTable(node, terminalWidth, theme);
         default:
@@ -211,6 +211,9 @@ function renderBlockquote(node, terminalWidth, theme, useBlessedTags) {
     });
     return borderedLines.join('\n');
 }
+/**
+ * Render a table (unstyled, basic layout).
+ */
 function renderTable(node, terminalWidth, theme) {
     if (!node.children.length)
         return '';

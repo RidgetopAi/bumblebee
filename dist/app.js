@@ -109,7 +109,7 @@ export async function runApp(config, fileOrDir, stdout) {
             // Get theme based on config
             const theme = getThemeForConfig(config.trueColor);
             // Render markdown to ANSI (useBlessedTags = false for stdout)
-            const output = render(markdown, width, theme, false);
+            const output = await render(markdown, width, theme, false);
             // Output to stdout
             console.log(output);
             return;
@@ -162,7 +162,7 @@ export async function runApp(config, fileOrDir, stdout) {
                 // Initial render at current terminal width
                 // Use blessed tags (useBlessedTags = true) for TUI mode
                 const width = process.stdout.columns || 80;
-                const rendered = render(markdownContent, width, currentTheme, true);
+                const rendered = await render(markdownContent, width, currentTheme, true);
                 layout.preview.content = rendered;
                 screen.render();
             }
@@ -173,7 +173,7 @@ export async function runApp(config, fileOrDir, stdout) {
         screen.render();
     }
     // File opening handler for explorer
-    const handleFileOpen = (filePath) => {
+    const handleFileOpen = async (filePath) => {
         try {
             // Check if file exists and is a file
             if (!fs.existsSync(filePath)) {
@@ -194,7 +194,7 @@ export async function runApp(config, fileOrDir, stdout) {
             layout.statusBar.content = filePath;
             // Render at current terminal width
             const width = process.stdout.columns || 80;
-            const rendered = render(markdownContent, width, currentTheme, true);
+            const rendered = await render(markdownContent, width, currentTheme, true);
             layout.preview.content = rendered;
             // Reset preview scroll position
             layout.preview.scrollTo(0);
@@ -229,7 +229,7 @@ export async function runApp(config, fileOrDir, stdout) {
         }
     });
     // Handle resize with content reflow
-    screen.on('resize', function () {
+    screen.on('resize', async function () {
         // Update layout dimensions for explorer/preview panes
         const explorerVisible = isExplorerVisible(explorerState);
         updateLayoutOnResize(layout, explorerVisible, config.explorerWidth);
@@ -237,7 +237,7 @@ export async function runApp(config, fileOrDir, stdout) {
         // Use blessed tags (useBlessedTags = true) for TUI mode
         if (markdownContent) {
             const newWidth = process.stdout.columns || 80;
-            const rendered = render(markdownContent, newWidth, currentTheme, true);
+            const rendered = await render(markdownContent, newWidth, currentTheme, true);
             layout.preview.content = rendered;
         }
         // Update explorer content if visible

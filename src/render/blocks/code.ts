@@ -4,6 +4,13 @@ import { getTextWidth } from '../ansi/width.js';
 import type { BumblebeeTheme } from '../../config/theme-bumblebee.js';
 import type { Code } from 'mdast';
 import highlight from 'cli-highlight';
+import {
+  codeBlockCache,
+  languageDetectionCache,
+  createContentHash,
+  PerformanceProfiler,
+  CacheStats
+} from '../../utils/cache.js';
 
 /**
  * Language detection priority system
@@ -14,6 +21,16 @@ import highlight from 'cli-highlight';
  * get higher weights to avoid false positives from generic syntax.
  */
 function detectLanguage(code: string): string {
+  // Check cache first
+  const contentHash = createContentHash(code);
+  const cached = languageDetectionCache.get(contentHash);
+  if (cached !== undefined) {
+    CacheStats.recordHit('languageDetection');
+    return cached;
+  }
+
+  CacheStats.recordMiss('languageDetection');
+
   // Convert to lowercase for case-insensitive matching
   const lowerCode = code.toLowerCase();
   const originalCode = code;
@@ -365,7 +382,11 @@ function detectLanguage(code: string): string {
 
   // Only return a language if we have sufficient confidence (score >= 5)
   // This helps avoid false positives from generic patterns
-  return bestScore >= 5 ? bestLang : '';
+  const result = bestScore >= 5 ? bestLang : '';
+
+  // Cache the result
+  languageDetectionCache.set(contentHash, result);
+  return result;
 }
 
 /**
@@ -399,9 +420,25 @@ function renderCodeWithCliHighlight(code: string, lang: string): string {
  * @param theme - Bumblebee theme with color palette
  * @returns Formatted ANSI string ready for terminal display
  */
-export function renderCodeBlock(node: Code, terminalWidth: number, theme: BumblebeeTheme): string {
+export async function renderCodeBlock(node: Code, terminalWidth: number, theme: BumblebeeTheme): Promise<string> {
+  const endProfile = PerformanceProfiler.start('render-code-block');
+
   const code = node.value;
   let lang = node.lang || '';
+
+  // Create cache key: hash of code + lang + width + theme identifier
+  const themeKey = `${theme.current.yellowA}-${theme.current.gray}`;
+  const cacheKey = `${createContentHash(code)}-${lang}-${terminalWidth}-${themeKey}`;
+
+  // Check cache first
+  const cached = codeBlockCache.get(cacheKey);
+  if (cached !== undefined) {
+    CacheStats.recordHit('codeBlock');
+    endProfile();
+    return cached;
+  }
+
+  CacheStats.recordMiss('codeBlock');
 
   // Apply language detection if no explicit language provided
   if (!lang) {
@@ -413,7 +450,7 @@ export function renderCodeBlock(node: Code, terminalWidth: number, theme: Bumble
   try {
     // Try Shiki first (best quality highlighting)
     if (lang) {
-      highlightedCode = codeToAnsi(code, lang, 'truecolor');
+      highlightedCode = await codeToAnsi(code, lang, 'truecolor');
     } else {
       // Plain text for code blocks without language
       highlightedCode = code;
@@ -473,7 +510,13 @@ export function renderCodeBlock(node: Code, terminalWidth: number, theme: Bumble
   const bottomBorder = theme.current.yellowA + '─'.repeat(terminalWidth - 2) + '\x1b[39m';
 
   // Combine all lines
-  return [topBorder, ...contentLines, bottomBorder].join('\n');
+  const result = [topBorder, ...contentLines, bottomBorder].join('\n');
+
+  // Cache the result
+  codeBlockCache.set(cacheKey, result);
+
+  endProfile();
+  return result;
 }
 
 /**

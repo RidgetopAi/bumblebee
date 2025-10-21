@@ -125,7 +125,7 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
       const theme = getThemeForConfig(config.trueColor);
 
       // Render markdown to ANSI (useBlessedTags = false for stdout)
-      const output = render(markdown, width, theme, false);
+      const output = await render(markdown, width, theme, false);
 
       // Output to stdout
       console.log(output);
@@ -185,7 +185,7 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
         // Initial render at current terminal width
         // Use blessed tags (useBlessedTags = true) for TUI mode
         const width = process.stdout.columns || 80;
-        const rendered = render(markdownContent, width, currentTheme, true);
+        const rendered = await render(markdownContent, width, currentTheme, true);
         layout.preview.content = rendered;
         screen.render();
       }
@@ -196,7 +196,7 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
   }
 
   // File opening handler for explorer
-  const handleFileOpen = (filePath: string) => {
+  const handleFileOpen = async (filePath: string) => {
     try {
       // Check if file exists and is a file
       if (!fs.existsSync(filePath)) {
@@ -221,7 +221,7 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
 
       // Render at current terminal width
       const width = process.stdout.columns || 80;
-      const rendered = render(markdownContent, width, currentTheme, true);
+      const rendered = await render(markdownContent, width, currentTheme, true);
       layout.preview.content = rendered;
 
       // Reset preview scroll position
@@ -261,7 +261,7 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
   });
 
   // Handle resize with content reflow
-  screen.on('resize', function() {
+  screen.on('resize', async function() {
     // Update layout dimensions for explorer/preview panes
     const explorerVisible = isExplorerVisible(explorerState);
     updateLayoutOnResize(layout, explorerVisible, config.explorerWidth);
@@ -270,7 +270,7 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
     // Use blessed tags (useBlessedTags = true) for TUI mode
     if (markdownContent) {
       const newWidth = process.stdout.columns || 80;
-      const rendered = render(markdownContent, newWidth, currentTheme, true);
+      const rendered = await render(markdownContent, newWidth, currentTheme, true);
       layout.preview.content = rendered;
     }
 

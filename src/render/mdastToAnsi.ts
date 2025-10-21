@@ -20,20 +20,20 @@ import type { Root, RootContent, Paragraph, Heading, Text, Emphasis, Strong, Lin
  * @example
  * ```typescript
  * import { bumblebeeTheme } from '../config/theme-bumblebee.js';
- * const output = render('# Hello World\n\nThis is a paragraph.', 80, bumblebeeTheme, false);
+ * const output = await render('# Hello World\n\nThis is a paragraph.', 80, bumblebeeTheme, false);
  * console.log(output); // ANSI-formatted output
  * ```
  */
-export function render(markdown: string, width: number, theme: BumblebeeTheme, useBlessedTags: boolean = false): string {
+export async function render(markdown: string, width: number, theme: BumblebeeTheme, useBlessedTags: boolean = false): Promise<string> {
   const ast = parseMd(markdown);
-  return renderRoot(ast, width, theme, useBlessedTags);
+  return await renderRoot(ast, width, theme, useBlessedTags);
 }
 
 /**
  * Render the root document node by joining all child nodes with newlines.
  */
-function renderRoot(node: Root, terminalWidth: number, theme: BumblebeeTheme, useBlessedTags: boolean): string {
-  const children = node.children.map(child => renderNode(child, terminalWidth, theme, useBlessedTags));
+async function renderRoot(node: Root, terminalWidth: number, theme: BumblebeeTheme, useBlessedTags: boolean): Promise<string> {
+  const children = await Promise.all(node.children.map(child => renderNode(child, terminalWidth, theme, useBlessedTags)));
   return children.join('\n\n');
 }
 
@@ -41,7 +41,7 @@ function renderRoot(node: Root, terminalWidth: number, theme: BumblebeeTheme, us
  * Render a single MDAST node to ANSI-formatted string.
  * Dispatches to specific handler functions based on node type.
  */
-function renderNode(node: RootContent, terminalWidth: number, theme: BumblebeeTheme, useBlessedTags: boolean): string {
+async function renderNode(node: RootContent, terminalWidth: number, theme: BumblebeeTheme, useBlessedTags: boolean): Promise<string> {
   switch (node.type) {
     case 'paragraph':
       return renderParagraph(node as Paragraph, terminalWidth, theme);
@@ -62,7 +62,7 @@ function renderNode(node: RootContent, terminalWidth: number, theme: BumblebeeTh
     case 'blockquote':
       return renderBlockquote(node as Blockquote, terminalWidth, theme, useBlessedTags);
     case 'code':
-      return renderCodeBlock(node as Code, terminalWidth, theme);
+      return await renderCodeBlock(node as Code, terminalWidth, theme);
     case 'table':
       return renderTable(node as Table, terminalWidth, theme);
     default:
@@ -240,7 +240,9 @@ function renderBlockquote(node: Blockquote, terminalWidth: number, theme: Bumble
   return borderedLines.join('\n');
 }
 
-
+/**
+ * Render a table (unstyled, basic layout).
+ */
 function renderTable(node: Table, terminalWidth: number, theme: BumblebeeTheme): string {
   if (!node.children.length) return '';
 
