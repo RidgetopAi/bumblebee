@@ -41,7 +41,7 @@ function highlightJavaScript(code: string): string {
 
   // Keywords (cyan)
   const keywords = [
-    'const', 'let', 'var', 'function', 'class', 'interface', 'type',
+    'const', 'let', 'var', 'function', 'class', 'interface', 'type', 'private', 'constructor', 'new',
     'if', 'else', 'for', 'while', 'return', 'import', 'export',
     'async', 'await', 'try', 'catch', 'throw'
   ];
@@ -160,6 +160,20 @@ describe('Code Block Widget Component - Widget Rendering', () => {
     expect(widget.style.bg).toBe('black');
   });
 
+  it('should add language badge to widget when language is specified', () => {
+    const code = 'const x = 42;';
+    const widget = createCodeBlockWidget(code, 'javascript', 50);
+
+    expect(widget.label).toBe('┤ javascript ├');
+  });
+
+  it('should not add language badge when no language specified', () => {
+    const code = 'const x = 42;';
+    const widget = createCodeBlockWidget(code, '', 50);
+
+    expect(widget.label).toBeUndefined();
+  });
+
   it('should apply syntax highlighting to widget content', () => {
     const code = 'const x = 42; function test() { return "hello"; }';
     const widget = createCodeBlockWidget(code, 'javascript', 60);
@@ -195,5 +209,264 @@ describe('Code Block Widget Component - Widget Rendering', () => {
     expect(widget.border.fg).toBe('yellow');
     expect(widget.padding.left).toBe(1);
     expect(widget.padding.right).toBe(1);
+  });
+});
+
+describe('Code Block Widget Component - Real Code Testing (TB045-5a)', () => {
+  it('should highlight real TypeScript code from bumblebee CLI', () => {
+    const realCliCode = `#!/usr/bin/env node
+
+import { Command } from 'commander';
+import { loadConfig } from './config/loadConfig.js';
+import { runApp } from './app.js';
+
+const program = new Command();
+
+program
+  .name('bumblebee')
+  .description('CLI Markdown Viewer & Editor')
+  .version('1.0.0')
+  .argument('[fileOrDir]', 'file or directory to open', '.')
+  .option('--stdout', 'output to stdout instead of TUI')
+  .action(async (fileOrDir: string, options: any) => {
+    try {
+      const config = loadConfig(options.config);
+      await runApp(config, fileOrDir, options.stdout);
+    } catch (error) {
+      console.error('Error:', (error as Error).message);
+    }
+  });
+
+program.parse();`;
+
+    const result = highlightCode(realCliCode, 'typescript');
+
+    // Verify key syntax elements are highlighted
+    expect(result).toContain('{cyan-fg}import{/cyan-fg}');
+    expect(result).toContain('{cyan-fg}const{/cyan-fg}');
+    expect(result).toContain('{cyan-fg}async{/cyan-fg}');
+    expect(result).toContain('{cyan-fg}try{/cyan-fg}');
+    expect(result).toContain('{cyan-fg}catch{/cyan-fg}');
+
+    // Verify strings are highlighted
+    expect(result).toContain('{green-fg}\'commander\'{/green-fg}');
+    expect(result).toContain('{green-fg}\'./config/loadConfig.js\'{/green-fg}');
+    expect(result).toContain('{green-fg}\'bumblebee\'{/green-fg}');
+
+    // Version string with numbers highlighted inside
+    expect(result).toContain('{green-fg}\'CLI Markdown Viewer & Editor\'{/green-fg}');
+  });
+
+  it('should highlight real TypeScript code from bumblebee app.ts', () => {
+    const realAppCode = `import blessed from 'neo-blessed';
+import fs from 'fs';
+import path from 'path';
+import chokidar from 'chokidar';
+import { BumblebeeConfig } from './config/loadConfig.js';
+import { createLayout, appendLayoutToScreen, updateLayoutOnResize } from './tui/layout.js';
+
+const blessedAny = blessed as any;
+let fileWatcher: any = null;
+
+function setupFileWatcher(directory: string, explorerState: any, layout: any, config: BumblebeeConfig, screen: any): void {
+  if (fileWatcher) {
+    fileWatcher.close();
+  }
+
+  try {
+    fileWatcher = chokidar.watch(directory, {
+      ignored: config.showDotfiles ? [] : (path: string) => path.includes('/.'),
+      persistent: true,
+      ignoreInitial: true,
+      awaitWriteFinish: {
+        stabilityThreshold: 100,
+        pollInterval: 50
+      },
+      ignorePermissionErrors: true,
+    });
+
+    const debouncedRefresh = () => {
+      if (refreshTimeout) clearTimeout(refreshTimeout);
+      refreshTimeout = setTimeout(() => {
+        try {
+          if (explorerState.visible && directory === explorerState.rootPath) {
+            refreshExplorer(explorerState, config);
+          }
+        } catch (error) {
+          // Handle refresh errors gracefully
+        }
+      }, 300);
+    };
+
+    fileWatcher.on('add', debouncedRefresh);
+    fileWatcher.on('unlink', debouncedRefresh);
+  } catch (error) {
+    // Handle watcher setup errors gracefully
+  }
+}`;
+
+    const result = highlightCode(realAppCode, 'typescript');
+
+    // Verify complex TypeScript syntax highlighting
+    expect(result).toContain('{cyan-fg}import{/cyan-fg}');
+    expect(result).toContain('{cyan-fg}const{/cyan-fg}');
+    expect(result).toContain('{cyan-fg}let{/cyan-fg}');
+    expect(result).toContain('{cyan-fg}function{/cyan-fg}');
+    expect(result).toContain('{cyan-fg}try{/cyan-fg}');
+    expect(result).toContain('{cyan-fg}catch{/cyan-fg}');
+    expect(result).toContain('{cyan-fg}if{/cyan-fg}');
+
+    // Interface types and generics
+    expect(result).toContain('BumblebeeConfig');
+
+    // Object literals and numeric values
+    expect(result).toContain('{yellow-fg}100{/yellow-fg}');
+    expect(result).toContain('{yellow-fg}50{/yellow-fg}');
+    expect(result).toContain('{yellow-fg}300{/yellow-fg}');
+
+    // String literals
+    expect(result).toContain('{green-fg}\'neo-blessed\'{/green-fg}');
+    expect(result).toContain('{green-fg}\'add\'{/green-fg}');
+    expect(result).toContain('{green-fg}\'unlink\'{/green-fg}');
+  });
+
+  it('should handle multi-line comments and complex syntax', () => {
+    const complexCode = `/**
+ * This is a multi-line comment
+ * with multiple lines
+ */
+interface User {
+  name: string;
+  age: number;
+  active: boolean;
+}
+
+class UserService {
+  private users: User[] = [];
+
+  constructor() {
+    this.users = [];
+  }
+
+  async addUser(user: User): Promise<void> {
+    // Validate user data
+    if (!user.name || user.age < 0) {
+      throw new Error('Invalid user data');
+    }
+
+    this.users.push(user);
+  }
+
+  getUsers(): User[] {
+    return this.users.filter(u => u.active === true);
+  }
+}`;
+
+    const result = highlightCode(complexCode, 'typescript');
+
+    // Keywords
+    expect(result).toContain('{cyan-fg}interface{/cyan-fg}');
+    expect(result).toContain('{cyan-fg}class{/cyan-fg}');
+    expect(result).toContain('{cyan-fg}private{/cyan-fg}');
+    expect(result).toContain('{cyan-fg}constructor{/cyan-fg}');
+    expect(result).toContain('{cyan-fg}async{/cyan-fg}');
+    expect(result).toContain('{cyan-fg}throw{/cyan-fg}');
+    expect(result).toContain('{cyan-fg}new{/cyan-fg}');
+    expect(result).toContain('{cyan-fg}return{/cyan-fg}');
+
+    // Multi-line comments
+    expect(result).toContain('{gray-fg}/*');
+    expect(result).toContain('multi-line comment');
+    expect(result).toContain('*/{/gray-fg}');
+
+    // Single-line comments
+    expect(result).toContain('{gray-fg}// Validate user data{/gray-fg}');
+
+    // Types and values
+    expect(result).toContain('string');
+    expect(result).toContain('number');
+    expect(result).toContain('boolean');
+    expect(result).toContain('Promise');
+  });
+
+  it('should highlight real JSON configuration', () => {
+    const realJson = `{
+  "name": "bumblebee",
+  "version": "1.0.0",
+  "description": "CLI Markdown Viewer & Editor",
+  "main": "dist/cli.js",
+  "type": "module",
+  "bin": {
+    "bumblebee": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "dev": "tsx watch src/cli.ts",
+    "lint": "eslint src/**/*.ts"
+  },
+  "dependencies": {
+    "neo-blessed": "^0.2.4",
+    "commander": "^12.0.0",
+    "remark": "^15.0.1",
+    "remark-parse": "^11.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0",
+    "tsx": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "author": "Bumblebee Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/example/bumblebee.git"
+  },
+  "keywords": [
+    "cli",
+    "markdown",
+    "viewer",
+    "editor",
+    "terminal"
+  ],
+  "bugs": {
+    "url": "https://github.com/example/bumblebee/issues"
+  },
+  "homepage": "https://github.com/example/bumblebee#readme"
+}`;
+
+    const result = highlightCode(realJson, 'json');
+
+    // String keys and values
+    expect(result).toContain('{green-fg}"name"{/green-fg}');
+    expect(result).toContain('{green-fg}"bumblebee"{/green-fg}');
+    expect(result).toContain('{green-fg}"description"{/green-fg}');
+    expect(result).toContain('{green-fg}"CLI Markdown Viewer & Editor"{/green-fg}');
+
+    // Version numbers (inside version strings get highlighted)
+    expect(result).toContain('{yellow-fg}1.0{/yellow-fg}');
+    expect(result).toContain('{yellow-fg}0.2{/yellow-fg}');
+  });
+
+  it('should create widget with real code and language badge', () => {
+    const realCode = `import { Command } from 'commander';
+const program = new Command();
+program.version('1.0.0');`;
+
+    const widget = createCodeBlockWidget(realCode, 'typescript', 60);
+
+    // Verify widget configuration
+    expect(widget.width).toBe(60);
+    expect(widget.label).toBe('┤ typescript ├');
+
+    // Verify highlighting is applied
+    expect(widget.content).toContain('{cyan-fg}import{/cyan-fg}');
+    expect(widget.content).toContain('{cyan-fg}const{/cyan-fg}');
+    expect(widget.content).toContain('{green-fg}\'commander\'{/green-fg}');
+    expect(widget.content).toContain('{yellow-fg}1.0{/yellow-fg}');
   });
 });

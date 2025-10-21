@@ -18,10 +18,14 @@ export function createCodeBlockWidget(code: string, lang: string = '', width: nu
   // Basic syntax highlighting using blessed colors
   const highlightedCode = highlightCode(code, lang);
 
+  // Language badge for top border (only when language is specified)
+  const label = lang ? `┤ ${lang} ├` : undefined;
+
   return blessedAny.box({
     width: width,
     height: 'shrink', // Auto-size height based on content
     content: highlightedCode,
+    label: label,
     border: {
       type: 'line',
       fg: 'yellow', // Bumblebee yellow border
@@ -68,7 +72,7 @@ function highlightJavaScript(code: string): string {
 
   // Keywords (cyan)
   const keywords = [
-    'const', 'let', 'var', 'function', 'class', 'interface', 'type',
+    'const', 'let', 'var', 'function', 'class', 'interface', 'type', 'private', 'constructor', 'new',
     'if', 'else', 'for', 'while', 'return', 'import', 'export',
     'async', 'await', 'try', 'catch', 'throw'
   ];
