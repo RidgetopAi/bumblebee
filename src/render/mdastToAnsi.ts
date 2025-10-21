@@ -56,13 +56,13 @@ async function renderNode(node: RootContent, terminalWidth: number, theme: Bumbl
     case 'link':
       return renderLink(node as Link, theme);
     case 'list':
-      return renderList(node as List, terminalWidth, theme, useBlessedTags);
+      return await renderList(node as List, terminalWidth, theme, useBlessedTags);
     case 'listItem':
-      return renderListItem(node as ListItem, terminalWidth, theme, useBlessedTags);
+      return await renderListItem(node as ListItem, terminalWidth, theme, useBlessedTags);
     case 'blockquote':
-      return renderBlockquote(node as Blockquote, terminalWidth, theme, useBlessedTags);
+      return await renderBlockquote(node as Blockquote, terminalWidth, theme, useBlessedTags);
     case 'code':
-      return await renderCodeBlock(node as Code, terminalWidth, theme);
+      return await renderCodeBlock(node as Code, terminalWidth, theme, useBlessedTags);
     case 'table':
       return renderTable(node as Table, terminalWidth, theme);
     default:
@@ -92,44 +92,43 @@ function renderParagraph(node: Paragraph, terminalWidth: number, theme: Bumblebe
 function renderHeading(node: Heading, terminalWidth: number, theme: BumblebeeTheme, useBlessedTags: boolean): string {
   const level = node.depth;
   const text = collectText(node);
-  const prefix = '#'.repeat(level) + ' ';
 
   if (useBlessedTags) {
     // Use blessed tags for TUI mode
     switch (level) {
       case 1:
-        return '{bold}{underline}{yellow-fg}' + prefix + text + '{/yellow-fg}{/underline}{/bold}';
+        return '{bold}{underline}{yellow-fg}' + text + '{/yellow-fg}{/underline}{/bold}';
       case 2:
-        return '{bold}{yellow-fg}' + prefix + text + '{/yellow-fg}{/bold}';
+        return '{bold}{yellow-fg}' + text + '{/yellow-fg}{/bold}';
       case 3:
-        return '{bold}{yellow-fg}' + prefix + text + '{/yellow-fg}{/bold}';
+        return '{bold}{yellow-fg}' + text + '{/yellow-fg}{/bold}';
       case 4:
-        return '{yellow-fg}' + prefix + text + '{/yellow-fg}';
+        return '{yellow-fg}' + text + '{/yellow-fg}';
       case 5:
       case 6:
       default:
-        return '{#8E8F95-fg}' + prefix + text + '{/#8E8F95-fg}';
+        return '{#8E8F95-fg}' + text + '{/#8E8F95-fg}';
     }
   } else {
     // Use ANSI codes for stdout mode
     switch (level) {
       case 1:
         // Bold + Underline + yellowA
-        return '\x1b[1m\x1b[4m' + theme.current.yellowA + prefix + text + '\x1b[39m\x1b[24m\x1b[22m';
+        return '\x1b[1m\x1b[4m' + theme.current.yellowA + text + '\x1b[39m\x1b[24m\x1b[22m';
       case 2:
         // Bold + yellowA
-        return '\x1b[1m' + theme.current.yellowA + prefix + text + '\x1b[39m\x1b[22m';
+        return '\x1b[1m' + theme.current.yellowA + text + '\x1b[39m\x1b[22m';
       case 3:
         // Bold + yellowB
-        return '\x1b[1m' + theme.current.yellowB + prefix + text + '\x1b[39m\x1b[22m';
+        return '\x1b[1m' + theme.current.yellowB + text + '\x1b[39m\x1b[22m';
       case 4:
         // yellowB (no bold)
-        return theme.current.yellowB + prefix + text + '\x1b[39m';
+        return theme.current.yellowB + text + '\x1b[39m';
       case 5:
       case 6:
       default:
         // gray (subtle)
-        return theme.current.gray + prefix + text + '\x1b[39m';
+        return theme.current.gray + text + '\x1b[39m';
     }
   }
 }
@@ -176,14 +175,16 @@ function renderLink(node: Link, theme: BumblebeeTheme): string {
 /**
  * Render a list (ordered or unordered).
  */
-function renderList(node: List, terminalWidth: number, theme: BumblebeeTheme, useBlessedTags: boolean): string {
+async function renderList(node: List, terminalWidth: number, theme: BumblebeeTheme, useBlessedTags: boolean): Promise<string> {
   const isOrdered = node.ordered;
   const start = node.start || 1;
 
-  const items = node.children.map((item, index) => {
-    const bullet = isOrdered ? `${start + index}.` : '•';
-    return renderListItemWithBullet(item as ListItem, bullet, terminalWidth, theme, useBlessedTags);
-  });
+  const items = await Promise.all(
+    node.children.map(async (item, index) => {
+      const bullet = isOrdered ? `${start + index}.` : '•';
+      return await renderListItemWithBullet(item as ListItem, bullet, terminalWidth, theme, useBlessedTags);
+    })
+  );
 
   return items.join('\n');
 }
@@ -191,24 +192,25 @@ function renderList(node: List, terminalWidth: number, theme: BumblebeeTheme, us
 /**
  * Render a list item with bullet/number prefix and indentation.
  */
-function renderListItem(node: ListItem, terminalWidth: number, theme: BumblebeeTheme, useBlessedTags: boolean): string {
+async function renderListItem(node: ListItem, terminalWidth: number, theme: BumblebeeTheme, useBlessedTags: boolean): Promise<string> {
   // This is called for nested list items, use a simple bullet
-  return renderListItemWithBullet(node, '•', terminalWidth, theme, useBlessedTags);
+  return await renderListItemWithBullet(node, '•', terminalWidth, theme, useBlessedTags);
 }
 
 /**
  * Helper to render a list item with a specific bullet prefix.
  */
-function renderListItemWithBullet(
+async function renderListItemWithBullet(
   node: ListItem,
   bullet: string,
   terminalWidth: number,
   theme: BumblebeeTheme,
   useBlessedTags: boolean
-): string {
-  const content = node.children
-    .map(child => renderNode(child, terminalWidth - 2, theme, useBlessedTags)) // -2 for bullet + space
-    .join('\n');
+): Promise<string> {
+  const renderedChildren = await Promise.all(
+    node.children.map(child => renderNode(child, terminalWidth - 2, theme, useBlessedTags))
+  );
+  const content = renderedChildren.join('\n');
 
   const lines = content.split('\n');
   const indentedLines = lines.map((line, index) => {
@@ -225,10 +227,11 @@ function renderListItemWithBullet(
 /**
  * Render a blockquote with left border bar and gray color.
  */
-function renderBlockquote(node: Blockquote, terminalWidth: number, theme: BumblebeeTheme, useBlessedTags: boolean): string {
-  const content = node.children
-    .map(child => renderNode(child, terminalWidth - 2, theme, useBlessedTags)) // -2 for border
-    .join('\n\n');
+async function renderBlockquote(node: Blockquote, terminalWidth: number, theme: BumblebeeTheme, useBlessedTags: boolean): Promise<string> {
+  const renderedChildren = await Promise.all(
+    node.children.map(child => renderNode(child, terminalWidth - 2, theme, useBlessedTags))
+  );
+  const content = renderedChildren.join('\n\n');
 
   const lines = content.split('\n');
   const borderedLines = lines.map(line => {

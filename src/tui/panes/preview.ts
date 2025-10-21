@@ -14,6 +14,7 @@ export function createPreview(): any {
     alwaysScroll: true,
     mouse: true,
     keys: true,
+    tags: true,
     style: {
       border: {
         fg: bumblebeeTheme.current.yellowA, // Normal border color
