@@ -60,8 +60,22 @@ export async function restoreTui(state) {
         // Re-render content at new terminal width
         if (markdownContent) {
             const newWidth = process.stdout.columns || 80;
-            const rendered = render(markdownContent, newWidth, currentTheme, true);
-            layout.preview.content = rendered;
+            const rendered = await render(markdownContent, newWidth, currentTheme, true);
+            // Apply render result
+            if (typeof rendered === 'string') {
+                layout.preview.content = rendered;
+            }
+            else {
+                // Clear old widgets
+                const childrenToRemove = layout.preview.children.filter((child) => child !== layout.preview._label && child !== layout.preview._border);
+                childrenToRemove.forEach((child) => layout.preview.remove(child));
+                layout.preview.content = rendered.textContent;
+                for (const widgetPlacement of rendered.widgets) {
+                    widgetPlacement.widget.top = widgetPlacement.startLine;
+                    layout.preview.append(widgetPlacement.widget);
+                }
+                screen.render();
+            }
         }
         // Update explorer content if visible
         if (explorerVisibleNow) {

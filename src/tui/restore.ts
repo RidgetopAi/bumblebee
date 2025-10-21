@@ -57,19 +57,8 @@ export async function restoreTui(state: TuiRestoreState): Promise<{ screen: any,
 
   // Restore preview content
   const width = process.stdout.columns || 80;
-  const rendered = await render(markdownContent, width, currentTheme, true);
-  
-  // Apply render result (same logic as app.ts applyRenderResult)
-  if (typeof rendered === 'string') {
-    layout.preview.content = rendered;
-  } else {
-    layout.preview.content = rendered.textContent;
-    // Append widgets
-    for (const widgetPlacement of rendered.widgets) {
-      widgetPlacement.widget.top = widgetPlacement.startLine;
-      layout.preview.append(widgetPlacement.widget);
-    }
-  }
+  const rendered = render(markdownContent, width, currentTheme, true);
+  layout.preview.content = rendered;
 
   // Update status bar with current file path
   layout.statusBar.content = currentFilePath;
@@ -99,8 +88,25 @@ export async function restoreTui(state: TuiRestoreState): Promise<{ screen: any,
     // Re-render content at new terminal width
     if (markdownContent) {
       const newWidth = process.stdout.columns || 80;
-      const rendered = render(markdownContent, newWidth, currentTheme, true);
-      layout.preview.content = rendered;
+      const rendered = await render(markdownContent, newWidth, currentTheme, true);
+      
+      // Apply render result
+      if (typeof rendered === 'string') {
+        layout.preview.content = rendered;
+      } else {
+        // Clear old widgets
+        const childrenToRemove = layout.preview.children.filter((child: any) =>
+          child !== layout.preview._label && child !== layout.preview._border
+        );
+        childrenToRemove.forEach((child: any) => layout.preview.remove(child));
+        
+        layout.preview.content = rendered.textContent;
+        for (const widgetPlacement of rendered.widgets) {
+          widgetPlacement.widget.top = widgetPlacement.startLine;
+          layout.preview.append(widgetPlacement.widget);
+        }
+        screen.render();
+      }
     }
 
     // Update explorer content if visible
