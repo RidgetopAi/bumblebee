@@ -5,12 +5,12 @@ import blessed from 'neo-blessed';
 const blessedAny = blessed as any;
 
 /**
- * Add indentation guides to a code line within widget content area
+ * Add padding to a code line to fill the widget content area
  * @param line - Code line with blessed tags
  * @param contentWidth - Available content width (widget width - borders - padding)
- * @returns Line with indentation guides added
+ * @returns Line with padding added
  */
-function addIndentationGuides(line: string, contentWidth: number): string {
+function addPadding(line: string, contentWidth: number): string {
   // Calculate visible width (ignoring blessed tags)
   const visibleWidth = getVisibleWidth(line);
 
@@ -19,16 +19,9 @@ function addIndentationGuides(line: string, contentWidth: number): string {
     return line;
   }
 
-  // Add padding with indentation guides every 4 columns
-  let padding = '';
-  for (let i = visibleWidth; i < contentWidth; i++) {
-    if ((i + 1) % 4 === 0) {
-      // Use blessed gray color for subtle guides
-      padding += '{gray-fg}│{/gray-fg}';
-    } else {
-      padding += ' ';
-    }
-  }
+  // Add padding with plain spaces (no indentation guides)
+  const paddingLength = contentWidth - visibleWidth;
+  const padding = ' '.repeat(paddingLength);
 
   return line + padding;
 }
@@ -49,7 +42,6 @@ function getVisibleWidth(text: string): number {
  *
  * This is Phase 5a: Widget-based code block rendering instead of flat text strings.
  * Uses blessed's native colors and styling for better integration with the TUI.
- * Includes indentation guides (faint vertical lines) every 4 columns for improved readability.
  *
  * @param code - The code content to render
  * @param lang - Language for syntax highlighting (optional)
@@ -63,19 +55,20 @@ export function createCodeBlockWidget(code: string, lang: string = '', width: nu
   // Calculate content area width (widget width - borders - padding)
   const contentWidth = width - 4; // 2 for borders, 2 for padding
 
-  // Add indentation guides to each line
-  const linesWithGuides = highlightedCode.split('\n').map(line =>
-    addIndentationGuides(line, contentWidth)
+  // Add padding to each line
+  const paddedLines = highlightedCode.split('\n').map(line =>
+    addPadding(line, contentWidth)
   ).join('\n');
 
   // Language badge for top border (only when language is specified)
   const label = lang ? `┤ ${lang} ├` : undefined;
 
+  // neo-blessed doesn't have setLabel() method - must use constructor option
   return blessedAny.box({
     width: width,
     height: 'shrink', // Auto-size height based on content
-    content: linesWithGuides,
-    label: label,
+    content: paddedLines,
+    label: label, // Must be set in constructor (neo-blessed limitation)
     border: {
       type: 'line',
       fg: 'yellow', // Bumblebee yellow border
