@@ -140,6 +140,8 @@ export async function runApp(config, fileOrDir, stdout) {
     setupFileWatcher(explorerRoot, explorerState, layout, config, screen);
     // Append layout components to screen
     appendLayoutToScreen(screen, layout);
+    // Force initial render so blessed calculates dimensions
+    screen.render();
     // Read and render markdown content for preview
     let markdownContent = '';
     let currentTheme = getThemeForConfig(config.trueColor);
@@ -184,8 +186,12 @@ export async function runApp(config, fileOrDir, stdout) {
                 markdownContent = fs.readFileSync(fileOrDir, 'utf-8');
                 // Initial render at current terminal width
                 // Use blessed tags (useBlessedTags = true) for TUI mode
-                const width = process.stdout.columns || 80;
-                const renderResult = await render(markdownContent, width, currentTheme, true);
+                // IMPORTANT: Get actual terminal width from blessed screen after initial render
+                // Blessed populates screen.width/height from the terminal
+                const terminalWidth = screen.width > 1 ? screen.width : (process.stdout.columns || 80);
+                const explorerWidth = layout.explorer.hidden ? 0 : (layout.explorer.width || config.explorerWidth);
+                const availableWidth = terminalWidth - explorerWidth - 2; // -2 for preview pane borders
+                const renderResult = await render(markdownContent, availableWidth, currentTheme, true);
                 applyRenderResult(renderResult, layout.preview);
                 screen.render();
             }
@@ -215,9 +221,11 @@ export async function runApp(config, fileOrDir, stdout) {
             currentFilePath = filePath;
             // Update status bar with new file path
             layout.statusBar.content = filePath;
-            // Render at current terminal width
-            const width = process.stdout.columns || 80;
-            const renderResult = await render(markdownContent, width, currentTheme, true);
+            // Render at correct width (accounting for explorer pane and borders)
+            const terminalWidth = screen.width || process.stdout.columns || 80;
+            const explorerWidth = layout.explorer.hidden ? 0 : (layout.explorer.width || config.explorerWidth);
+            const availableWidth = terminalWidth - explorerWidth - 2; // -2 for preview pane borders
+            const renderResult = await render(markdownContent, availableWidth, currentTheme, true);
             applyRenderResult(renderResult, layout.preview);
             // Reset preview scroll position
             layout.preview.scrollTo(0);
@@ -259,8 +267,10 @@ export async function runApp(config, fileOrDir, stdout) {
         // Re-render content at new terminal width
         // Use blessed tags (useBlessedTags = true) for TUI mode
         if (markdownContent) {
-            const newWidth = process.stdout.columns || 80;
-            const renderResult = await render(markdownContent, newWidth, currentTheme, true);
+            const terminalWidth = screen.width || process.stdout.columns || 80;
+            const explorerWidth = explorerVisible ? config.explorerWidth : 0;
+            const availableWidth = terminalWidth - explorerWidth - 2; // -2 for preview pane borders
+            const renderResult = await render(markdownContent, availableWidth, currentTheme, true);
             applyRenderResult(renderResult, layout.preview);
         }
         // Update explorer content if visible

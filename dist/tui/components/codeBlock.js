@@ -49,11 +49,10 @@ export function createCodeBlockWidget(code, lang = '', width) {
     const paddedLines = highlightedCode.split('\n').map(line => addPadding(line, contentWidth)).join('\n');
     // Language badge for top border (only when language is specified)
     const label = lang ? `┤ ${lang} ├` : undefined;
-    return blessedAny.box({
+    const widget = blessedAny.box({
         width: width,
         height: 'shrink', // Auto-size height based on content
         content: paddedLines,
-        label: label,
         border: {
             type: 'line',
             fg: 'yellow', // Bumblebee yellow border
@@ -69,6 +68,12 @@ export function createCodeBlockWidget(code, lang = '', width) {
         },
         scrollable: false, // Let parent handle scrolling
     });
+    // Set label AFTER widget creation using setLabel() method
+    // This ensures proper positioning and visibility
+    if (label) {
+        widget.setLabel(label);
+    }
+    return widget;
 }
 /**
  * Apply basic syntax highlighting using blessed colors
