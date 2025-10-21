@@ -170,11 +170,18 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
 
   // Helper function to apply render result to preview pane
   function applyRenderResult(result: RenderResult, previewPane: any): void {
+    console.error(`[DEBUG applyRenderResult] result type: ${typeof result}`);
+    console.error(`[DEBUG applyRenderResult] previewPane is preview: ${previewPane === layout.preview}`);
+    console.error(`[DEBUG applyRenderResult] previewPane is explorer: ${previewPane === layout.explorer}`);
+    
     if (typeof result === 'string') {
       // Stdout mode or simple content
+      console.error(`[DEBUG applyRenderResult] Setting string content, length: ${result.length}`);
       previewPane.content = result;
     } else {
       // TUI mode with widgets
+      console.error(`[DEBUG applyRenderResult] Setting textContent, length: ${result.textContent.length}`);
+      console.error(`[DEBUG applyRenderResult] Widgets count: ${result.widgets.length}`);
       previewPane.content = result.textContent;
 
       // Clear existing widget children (except the built-in ones)
@@ -190,22 +197,13 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
         const widget = widgetPlacement.widget;
         // Position widget based on line number (rough approximation)
         widget.top = widgetPlacement.startLine;
-        
-        // DEBUG: Check widget state before appending
-        console.error(`[DEBUG] Appending widget at top=${widgetPlacement.startLine}`);
-        console.error(`[DEBUG] Widget has _label: ${widget._label !== undefined}`);
-        if (widget._label) {
-          console.error(`[DEBUG] Label content: "${widget._label.content}"`);
-          console.error(`[DEBUG] Label visible: ${widget._label.visible !== false}`);
-          console.error(`[DEBUG] Label hidden: ${widget._label.hidden === true}`);
-        }
-        
         previewPane.append(widget);
-        
-        // DEBUG: Check after appending
-        console.error(`[DEBUG] Widget parent: ${widget.parent !== undefined}`);
-        console.error(`[DEBUG] Widget attached to screen tree: ${widget.screen !== undefined}`);
       }
+      
+      // CRITICAL: Must render after appending widgets for them to be visible
+      // Blessed has two layers: content (text) and children (widgets)
+      // Setting content updates immediately, but appending children needs explicit render
+      screen.render();
     }
   }
 
@@ -262,8 +260,13 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
 
       // Render at current terminal width
       const width = process.stdout.columns || 80;
+      console.error(`[DEBUG] Opening file: ${filePath}`);
+      console.error(`[DEBUG] Rendering to: ${layout.preview !== layout.explorer ? 'preview' : 'WRONG-explorer'}`);
+      console.error(`[DEBUG] About to call render(), width=${width}`);
       const renderResult = await render(markdownContent, width, currentTheme, true);
+      console.error(`[DEBUG] Render completed, about to apply result`);
       applyRenderResult(renderResult, layout.preview);
+      console.error(`[DEBUG] applyRenderResult completed`);
 
       // Reset preview scroll position
       layout.preview.scrollTo(0);
