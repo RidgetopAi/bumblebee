@@ -1,7 +1,8 @@
 import { bumblebeeTheme } from '../../config/theme-bumblebee.js';
+import blessed from 'neo-blessed';
 
 // Cast blessed to any to avoid TypeScript issues (neo-blessed has no types)
-const blessedAny = (await import('neo-blessed')).default as any;
+const blessedAny = blessed as any;
 
 export function createStatusBar(fileOrDir: string): any {
   return blessedAny.box({

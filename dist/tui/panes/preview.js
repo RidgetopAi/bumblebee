@@ -1,6 +1,7 @@
 import { bumblebeeTheme } from '../../config/theme-bumblebee.js';
+import blessed from 'neo-blessed';
 // Cast blessed to any to avoid TypeScript issues (neo-blessed has no types)
-const blessedAny = (await import('neo-blessed')).default;
+const blessedAny = blessed;
 export function createPreview() {
     return blessedAny.box({
         top: 3,
