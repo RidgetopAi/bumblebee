@@ -1,0 +1,24 @@
+--- a/src/render/mdastToAnsi.ts
++++ b/src/render/mdastToAnsi.ts
+@@ -395,15 +395,17 @@ function renderLink(node: Link, theme: BumblebeeTheme): string {
+ /**
+  * Fallback renderer for unknown node types.
+  */
+-function renderUnknown(node: RootContent, terminalWidth: number, theme: BumblebeeTheme, useBlessedTags: boolean): string {
++async function renderUnknown(node: RootContent, terminalWidth: number, theme: BumblebeeTheme, useBlessedTags: boolean): Promise<string> {
+   // Try to render children if they exist
+   if ('children' in node && Array.isArray(node.children)) {
+-    const children = (node as any).children.map((child: RootContent) =>
+-      renderNode(child, terminalWidth, theme, useBlessedTags)
++    const children = await Promise.all(
++      (node as any).children.map((child: RootContent) =>
++        renderNode(child, terminalWidth, theme, useBlessedTags)
++      )
+     );
+-    return children.join('');
++    return (children as string[]).join('');
+   }
+ 
+   // Fallback to empty string
+   return '';
+ }

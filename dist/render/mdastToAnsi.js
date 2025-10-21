@@ -117,7 +117,7 @@ async function renderNode(node, terminalWidth, theme, useBlessedTags) {
             return renderTable(node, terminalWidth, theme);
         default:
             // Fallback for unknown node types
-            return renderUnknown(node, terminalWidth, theme, useBlessedTags);
+            return await renderUnknown(node, terminalWidth, theme, useBlessedTags);
     }
 }
 /**
@@ -328,10 +328,10 @@ function calculateColumnWidths(rows, maxTotalWidth) {
 /**
  * Fallback renderer for unknown node types.
  */
-function renderUnknown(node, terminalWidth, theme, useBlessedTags) {
+async function renderUnknown(node, terminalWidth, theme, useBlessedTags) {
     // Try to render children if they exist
     if ('children' in node && Array.isArray(node.children)) {
-        const children = node.children.map((child) => renderNode(child, terminalWidth, theme, useBlessedTags));
+        const children = await Promise.all(node.children.map((child) => renderNode(child, terminalWidth, theme, useBlessedTags)));
         return children.join('');
     }
     // Fallback to empty string

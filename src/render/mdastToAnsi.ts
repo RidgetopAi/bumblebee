@@ -139,7 +139,7 @@ async function renderNode(node: RootContent, terminalWidth: number, theme: Bumbl
       return renderTable(node as Table, terminalWidth, theme);
     default:
       // Fallback for unknown node types
-      return renderUnknown(node, terminalWidth, theme, useBlessedTags);
+      return await renderUnknown(node, terminalWidth, theme, useBlessedTags);
   }
 }
 
@@ -395,13 +395,15 @@ function calculateColumnWidths(rows: TableRow[], maxTotalWidth: number): number[
 /**
  * Fallback renderer for unknown node types.
  */
-function renderUnknown(node: RootContent, terminalWidth: number, theme: BumblebeeTheme, useBlessedTags: boolean): string {
+async function renderUnknown(node: RootContent, terminalWidth: number, theme: BumblebeeTheme, useBlessedTags: boolean): Promise<string> {
   // Try to render children if they exist
   if ('children' in node && Array.isArray(node.children)) {
-    const children = (node as any).children.map((child: RootContent) =>
-      renderNode(child, terminalWidth, theme, useBlessedTags)
+    const children = await Promise.all(
+      (node as any).children.map((child: RootContent) =>
+        renderNode(child, terminalWidth, theme, useBlessedTags)
+      )
     );
-    return children.join('');
+    return (children as string[]).join('');
   }
 
   // Fallback to empty string
