@@ -50,7 +50,7 @@ export function createCodeBlockWidget(code, lang = '', width) {
     // Language badge for top border (only when language is specified)
     const label = lang ? `┤ ${lang} ├` : undefined;
     // neo-blessed doesn't have setLabel() method - must use constructor option
-    return blessedAny.box({
+    const widget = blessedAny.box({
         width: width,
         height: 'shrink', // Auto-size height based on content
         content: paddedLines,
@@ -70,6 +70,13 @@ export function createCodeBlockWidget(code, lang = '', width) {
         },
         scrollable: false, // Let parent handle scrolling
     });
+    // FIX: Blessed creates labels with visible: false by default
+    // We need to explicitly make them visible
+    if (widget._label) {
+        widget._label.visible = true;
+        widget._label.hidden = false;
+    }
+    return widget;
 }
 /**
  * Apply basic syntax highlighting using blessed colors

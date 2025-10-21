@@ -163,9 +163,6 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
   // Append layout components to screen
   appendLayoutToScreen(screen, layout);
 
-  // Force initial render so blessed calculates dimensions
-  screen.render();
-
   // Read and render markdown content for preview
   let markdownContent = '';
   let currentTheme = getThemeForConfig(config.trueColor);
@@ -193,7 +190,21 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
         const widget = widgetPlacement.widget;
         // Position widget based on line number (rough approximation)
         widget.top = widgetPlacement.startLine;
+        
+        // DEBUG: Check widget state before appending
+        console.error(`[DEBUG] Appending widget at top=${widgetPlacement.startLine}`);
+        console.error(`[DEBUG] Widget has _label: ${widget._label !== undefined}`);
+        if (widget._label) {
+          console.error(`[DEBUG] Label content: "${widget._label.content}"`);
+          console.error(`[DEBUG] Label visible: ${widget._label.visible !== false}`);
+          console.error(`[DEBUG] Label hidden: ${widget._label.hidden === true}`);
+        }
+        
         previewPane.append(widget);
+        
+        // DEBUG: Check after appending
+        console.error(`[DEBUG] Widget parent: ${widget.parent !== undefined}`);
+        console.error(`[DEBUG] Widget attached to screen tree: ${widget.screen !== undefined}`);
       }
     }
   }
@@ -214,13 +225,8 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
 
         // Initial render at current terminal width
         // Use blessed tags (useBlessedTags = true) for TUI mode
-        // IMPORTANT: Get actual terminal width from blessed screen after initial render
-        // Blessed populates screen.width/height from the terminal
-        const terminalWidth = screen.width > 1 ? screen.width : (process.stdout.columns || 80);
-        const explorerWidth = layout.explorer.hidden ? 0 : (layout.explorer.width || config.explorerWidth);
-        const availableWidth = terminalWidth - explorerWidth - 2; // -2 for preview pane borders
-
-        const renderResult = await render(markdownContent, availableWidth, currentTheme, true);
+        const width = process.stdout.columns || 80;
+        const renderResult = await render(markdownContent, width, currentTheme, true);
         applyRenderResult(renderResult, layout.preview);
         screen.render();
       }
@@ -254,12 +260,9 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
       // Update status bar with new file path
       layout.statusBar.content = filePath;
 
-      // Render at correct width (accounting for explorer pane and borders)
-      const terminalWidth = screen.width || process.stdout.columns || 80;
-      const explorerWidth = layout.explorer.hidden ? 0 : (layout.explorer.width || config.explorerWidth);
-      const availableWidth = terminalWidth - explorerWidth - 2; // -2 for preview pane borders
-
-      const renderResult = await render(markdownContent, availableWidth, currentTheme, true);
+      // Render at current terminal width
+      const width = process.stdout.columns || 80;
+      const renderResult = await render(markdownContent, width, currentTheme, true);
       applyRenderResult(renderResult, layout.preview);
 
       // Reset preview scroll position
@@ -307,11 +310,8 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
     // Re-render content at new terminal width
     // Use blessed tags (useBlessedTags = true) for TUI mode
     if (markdownContent) {
-      const terminalWidth = screen.width || process.stdout.columns || 80;
-      const explorerWidth = explorerVisible ? config.explorerWidth : 0;
-      const availableWidth = terminalWidth - explorerWidth - 2; // -2 for preview pane borders
-
-      const renderResult = await render(markdownContent, availableWidth, currentTheme, true);
+      const newWidth = process.stdout.columns || 80;
+      const renderResult = await render(markdownContent, newWidth, currentTheme, true);
       applyRenderResult(renderResult, layout.preview);
     }
 
