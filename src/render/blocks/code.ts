@@ -19,7 +19,7 @@ function detectLanguage(code: string): string {
   const originalCode = code;
 
   // Language patterns with weighted scores (higher = more specific/unique)
-  const detections: Array<{ lang: string, patterns: Array<{ pattern: string, weight: number }>, score: number }> = [
+  const detections: Array<{ lang: string, patterns: Array<{ pattern: string | RegExp, weight: number }>, score: number }> = [
     {
       lang: 'python',
       patterns: [
