@@ -77,8 +77,11 @@ async function renderRoot(node: Root, terminalWidth: number, theme: BumblebeeThe
     } else {
       // Widget content
       if (textContent) textContent += '\n\n';
-      textContent += result.textContent;
-      currentLine += result.textContent.split('\n').length + 2;
+
+      // Add blank lines for widget space
+      const maxWidgetHeight = Math.max(...result.widgets.map(w => w.lineCount));
+      const blankLines = '\n'.repeat(maxWidgetHeight);
+      textContent += blankLines;
 
       // Adjust widget line positions and add to collection
       for (const widget of result.widgets) {
@@ -88,6 +91,9 @@ async function renderRoot(node: Root, terminalWidth: number, theme: BumblebeeThe
           lineCount: widget.lineCount
         });
       }
+
+      // Advance past the widget space
+      currentLine += maxWidgetHeight + 2;
     }
   }
 

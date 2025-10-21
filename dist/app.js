@@ -144,6 +144,29 @@ export async function runApp(config, fileOrDir, stdout) {
     let markdownContent = '';
     let currentTheme = getThemeForConfig(config.trueColor);
     let currentFilePath = fileOrDir;
+    // Helper function to apply render result to preview pane
+    function applyRenderResult(result, previewPane) {
+        if (typeof result === 'string') {
+            // Stdout mode or simple content
+            previewPane.content = result;
+        }
+        else {
+            // TUI mode with widgets
+            previewPane.content = result.textContent;
+            // Clear existing widget children (except the built-in ones)
+            const childrenToRemove = previewPane.children.filter((child) => child !== previewPane._label && child !== previewPane._border);
+            childrenToRemove.forEach((child) => {
+                previewPane.remove(child);
+            });
+            // Add new widgets at calculated positions
+            for (const widgetPlacement of result.widgets) {
+                const widget = widgetPlacement.widget;
+                // Position widget based on line number (rough approximation)
+                widget.top = widgetPlacement.startLine;
+                previewPane.append(widget);
+            }
+        }
+    }
     try {
         // Check if file exists and is a file
         if (!fs.existsSync(fileOrDir)) {
@@ -162,8 +185,8 @@ export async function runApp(config, fileOrDir, stdout) {
                 // Initial render at current terminal width
                 // Use blessed tags (useBlessedTags = true) for TUI mode
                 const width = process.stdout.columns || 80;
-                const rendered = await render(markdownContent, width, currentTheme, true);
-                layout.preview.content = rendered;
+                const renderResult = await render(markdownContent, width, currentTheme, true);
+                applyRenderResult(renderResult, layout.preview);
                 screen.render();
             }
         }
@@ -194,8 +217,8 @@ export async function runApp(config, fileOrDir, stdout) {
             layout.statusBar.content = filePath;
             // Render at current terminal width
             const width = process.stdout.columns || 80;
-            const rendered = await render(markdownContent, width, currentTheme, true);
-            layout.preview.content = rendered;
+            const renderResult = await render(markdownContent, width, currentTheme, true);
+            applyRenderResult(renderResult, layout.preview);
             // Reset preview scroll position
             layout.preview.scrollTo(0);
             screen.render();
@@ -237,8 +260,8 @@ export async function runApp(config, fileOrDir, stdout) {
         // Use blessed tags (useBlessedTags = true) for TUI mode
         if (markdownContent) {
             const newWidth = process.stdout.columns || 80;
-            const rendered = await render(markdownContent, newWidth, currentTheme, true);
-            layout.preview.content = rendered;
+            const renderResult = await render(markdownContent, newWidth, currentTheme, true);
+            applyRenderResult(renderResult, layout.preview);
         }
         // Update explorer content if visible
         if (explorerVisible) {

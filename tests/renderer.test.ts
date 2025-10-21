@@ -1,4 +1,26 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+// Mock neo-blessed to avoid requiring a screen
+vi.mock('neo-blessed', () => ({
+  default: {
+    box: vi.fn((config) => ({
+      ...config,
+      // Add blessed-specific properties that tests expect
+      width: config.width,
+      height: config.height,
+      content: config.content,
+      border: config.border,
+      padding: config.padding,
+      style: config.style,
+      tags: config.tags,
+      scrollable: config.scrollable,
+      // Mock blessed methods
+      setContent: vi.fn(),
+      render: vi.fn(),
+    })),
+  },
+}));
+
 import { render } from '../src/render/mdastToAnsi.js';
 import { bumblebeeTheme } from '../src/config/theme-bumblebee.js';
 import stripAnsi from 'strip-ansi';
@@ -212,6 +234,98 @@ describe('MDAST Renderer', () => {
           expect(output).toContain('\n'); // Should have line breaks
         }
       });
+    });
+  });
+
+  describe('TUI mode (widget rendering)', () => {
+    it('renders code blocks as widgets in TUI mode', async () => {
+      const markdown = `
+# Test Document
+
+Some text before.
+
+\`\`\`typescript
+function hello() {
+  console.log("Hello World");
+}
+\`\`\`
+
+Some text after.
+      `.trim();
+
+    const result = await render(markdown, 80, bumblebeeTheme, true);
+
+      // Should return RenderResultObject, not string
+      expect(typeof result).toBe('object');
+      expect(result).toHaveProperty('textContent');
+      expect(result).toHaveProperty('widgets');
+      expect(Array.isArray(result.widgets)).toBe(true);
+      expect(result.widgets.length).toBe(1); // One code block
+    });
+
+    it('handles multiple code blocks in TUI mode', async () => {
+      const markdown = `
+# Multiple Code Blocks
+
+First block:
+
+\`\`\`javascript
+console.log("First block");
+\`\`\`
+
+Second block:
+
+\`\`\`python
+print("Second block")
+\`\`\`
+
+Third block:
+
+\`\`\`bash
+echo "Third block"
+\`\`\`
+      `.trim();
+
+      const result = await render(markdown, 80, bumblebeeTheme, true);
+
+      // Should return object with multiple widgets
+      expect(typeof result).toBe('object');
+      expect(result.widgets.length).toBe(3); // Three code blocks
+
+      // Widgets should have different startLine positions
+      const startLines = result.widgets.map(w => w.startLine);
+      expect(startLines).toEqual(expect.arrayContaining([expect.any(Number)]));
+      expect(new Set(startLines).size).toBe(3); // All different
+    });
+
+    it('positions widgets correctly in document flow', async () => {
+      const markdown = `
+Intro text.
+
+\`\`\`typescript
+function test() {
+  return true;
+}
+\`\`\`
+
+Middle text.
+
+\`\`\`javascript
+console.log("test");
+\`\`\`
+
+End text.
+      `.trim();
+
+      const result = await render(markdown, 80, bumblebeeTheme, true);
+
+      expect(result.widgets.length).toBe(2);
+
+      // First widget should be positioned after intro text
+      expect(result.widgets[0].startLine).toBeGreaterThan(0);
+
+      // Second widget should be positioned after first widget + middle text
+      expect(result.widgets[1].startLine).toBeGreaterThan(result.widgets[0].startLine);
     });
   });
 
