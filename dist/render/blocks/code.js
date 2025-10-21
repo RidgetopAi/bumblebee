@@ -59,22 +59,18 @@ export function renderCodeBlock(node, terminalWidth, theme) {
         return leftBorder + padding + lineWithGuides + padding + rightBorder;
     });
     // Add language badge to top-right if language is specified
-    let finalLines = contentLines;
+    let finalTopBorder = topBorder;
     if (lang) {
         const badge = createLanguageBadge(lang, theme);
-        // Overlay badge on the top border line
-        if (finalLines.length > 0) {
-            const topLine = finalLines[0];
-            const badgeWidth = getTextWidth(lang) + 4; // ┤ Lang ├
-            const badgeStartPos = terminalWidth - badgeWidth - 1; // Leave 1 space from right
-            // Replace part of the top line with the badge
-            const beforeBadge = topLine.substring(0, badgeStartPos);
-            const afterBadge = topLine.substring(badgeStartPos + badgeWidth);
-            finalLines[0] = beforeBadge + badge + afterBadge;
-        }
+        const badgeWidth = getTextWidth(lang) + 4; // ┤ Lang ├
+        const badgeStartPos = terminalWidth - badgeWidth - 1; // Leave 1 space from right
+        // Overlay badge on the top border
+        const beforeBadge = finalTopBorder.substring(0, badgeStartPos);
+        const afterBadge = finalTopBorder.substring(badgeStartPos + badgeWidth);
+        finalTopBorder = beforeBadge + badge + afterBadge;
     }
     // Combine all lines
-    return [topBorder, ...finalLines, bottomBorder].join('\n');
+    return [finalTopBorder, ...contentLines, bottomBorder].join('\n');
 }
 /**
  * Fallback renderer for plain code blocks when Shiki is not available
@@ -102,22 +98,18 @@ function renderPlainCodeBlock(code, lang, terminalWidth, theme) {
         return leftBorder + padding + lineWithGuides + padding + rightBorder;
     });
     // Add language badge to top-right if language is specified
-    let finalLines = contentLines;
+    let finalTopBorder = topBorder;
     if (lang) {
         const badge = createLanguageBadge(lang, theme);
-        // Overlay badge on the top border line
-        if (finalLines.length > 0) {
-            const topLine = finalLines[0];
-            const badgeWidth = getTextWidth(lang) + 4; // ┤ Lang ├
-            const badgeStartPos = terminalWidth - badgeWidth - 1; // Leave 1 space from right
-            // Replace part of the top line with the badge
-            const beforeBadge = topLine.substring(0, badgeStartPos);
-            const afterBadge = topLine.substring(badgeStartPos + badgeWidth);
-            finalLines[0] = beforeBadge + badge + afterBadge;
-        }
+        const badgeWidth = getTextWidth(lang) + 4; // ┤ Lang ├
+        const badgeStartPos = terminalWidth - badgeWidth - 1; // Leave 1 space from right
+        // Overlay badge on the top border
+        const beforeBadge = finalTopBorder.substring(0, badgeStartPos);
+        const afterBadge = finalTopBorder.substring(badgeStartPos + badgeWidth);
+        finalTopBorder = beforeBadge + badge + afterBadge;
     }
     // Combine all lines
-    return [topBorder, ...finalLines, bottomBorder].join('\n');
+    return [finalTopBorder, ...contentLines, bottomBorder].join('\n');
 }
 /**
  * Wrap a single line of code if it's too long
