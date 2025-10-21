@@ -37,24 +37,31 @@ function highlightCode(code: string, lang: string): string {
 }
 
 function highlightJavaScript(code: string): string {
-  let result = code;
+let result = code;
 
-  // Keywords (cyan)
-  const keywords = [
-    'const', 'let', 'var', 'function', 'class', 'interface', 'type', 'private', 'constructor', 'new',
-    'if', 'else', 'for', 'while', 'return', 'import', 'export',
-    'async', 'await', 'try', 'catch', 'throw'
-  ];
+// Keywords (magenta for better distinction)
+const keywords = [
+'const', 'let', 'var', 'function', 'class', 'private', 'constructor', 'new',
+'if', 'else', 'for', 'while', 'return', 'import', 'export',
+'async', 'await', 'try', 'catch', 'throw'
+];
 
-  for (const keyword of keywords) {
-    const regex = new RegExp(`\\b${keyword}\\b`, 'g');
-    result = result.replace(regex, `{cyan-fg}${keyword}{/cyan-fg}`);
-  }
+for (const keyword of keywords) {
+const regex = new RegExp(`\\b${keyword}\\b`, 'g');
+result = result.replace(regex, `{magenta-fg}${keyword}{/magenta-fg}`);
+}
 
-  // Strings (green)
-  result = result.replace(/(["'`])(.*?)\1/g, `{green-fg}$&{/green-fg}`);
+// Types and interfaces (cyan)
+const types = ['interface', 'type'];
+  for (const type of types) {
+  const regex = new RegExp(`\\b${type}\\b`, 'g');
+  result = result.replace(regex, `{cyan-fg}${type}{/cyan-fg}`);
+}
 
-  // Comments (gray)
+// Strings (green)
+result = result.replace(/(["'`])(.*?)\1/g, `{green-fg}$&{/green-fg}`);
+
+// Comments (gray)
   result = result.replace(/(\/\/.*$)/gm, `{gray-fg}$1{/gray-fg}`);
   result = result.replace(/(\/\*[\s\S]*?\*\/)/g, `{gray-fg}$&{/gray-fg}`);
 
@@ -65,22 +72,23 @@ function highlightJavaScript(code: string): string {
 }
 
 function highlightJSON(code: string): string {
-  let result = code;
+let result = code;
 
-  // Strings (green)
-  result = result.replace(/"([^"]*)"/g, `{green-fg}"$1"{/green-fg}`);
+// Booleans and null first (cyan for values)
+result = result.replace(/\btrue\b/g, '{cyan-fg}true{/cyan-fg}');
+result = result.replace(/\bfalse\b/g, '{cyan-fg}false{/cyan-fg}');
+result = result.replace(/\bnull\b/g, '{cyan-fg}null{/cyan-fg}');
 
-  // Numbers (yellow)
-  result = result.replace(/\b\d+(\.\d+)?\b/g, `{yellow-fg}$&{/yellow-fg}`);
+// Keys (magenta for distinction from string values)
+result = result.replace(/"([^"]*?)"\s*:/g, `{magenta-fg}"$1"{/magenta-fg}:`);
 
-  // Booleans and null (cyan)
-  const values = ['true', 'false', 'null'];
-  for (const value of values) {
-    const regex = new RegExp(`\\b${value}\\b`, 'g');
-    result = result.replace(regex, `{cyan-fg}${value}{/cyan-fg}`);
-  }
+// String values (green)
+result = result.replace(/:\s*"([^"]*)"/g, `: {green-fg}"$1"{/green-fg}`);
 
-  return result;
+// Numbers (yellow)
+result = result.replace(/\b\d+(\.\d+)?\b/g, `{yellow-fg}$&{/yellow-fg}`);
+
+return result;
 }
 
 describe('Code Block Widget Component - Syntax Highlighting', () => {
@@ -89,8 +97,8 @@ describe('Code Block Widget Component - Syntax Highlighting', () => {
     const result = highlightCode(code, 'javascript');
 
     // Check that blessed tags are applied for syntax highlighting
-    expect(result).toContain('{cyan-fg}const{/cyan-fg}');
-    expect(result).toContain('{cyan-fg}function{/cyan-fg}');
+    expect(result).toContain('{magenta-fg}const{/magenta-fg}');
+    expect(result).toContain('{magenta-fg}function{/magenta-fg}');
     expect(result).toContain('{yellow-fg}42{/yellow-fg}');
     expect(result).toContain('{green-fg}"hello"{/green-fg}');
   });
@@ -99,8 +107,8 @@ describe('Code Block Widget Component - Syntax Highlighting', () => {
     const code = '{"name": "test", "value": 123, "active": true}';
     const result = highlightCode(code, 'json');
 
-    expect(result).toContain('{green-fg}"name"{/green-fg}');
-    expect(result).toContain('{green-fg}"test"{/green-fg}');
+    expect(result).toContain('{magenta-fg}"name"{/magenta-fg}:');
+    expect(result).toContain(': {green-fg}"test"{/green-fg}');
     expect(result).toContain('{yellow-fg}123{/yellow-fg}');
     expect(result).toContain('{cyan-fg}true{/cyan-fg}');
   });
@@ -124,7 +132,7 @@ describe('Code Block Widget Component - Syntax Highlighting', () => {
     const result = highlightCode(code, 'typescript');
 
     expect(result).toContain('{cyan-fg}interface{/cyan-fg}');
-    expect(result).toContain('{cyan-fg}const{/cyan-fg}');
+    expect(result).toContain('{magenta-fg}const{/magenta-fg}');
     expect(result).toContain('{green-fg}"test"{/green-fg}');
   });
 });
@@ -179,8 +187,8 @@ describe('Code Block Widget Component - Widget Rendering', () => {
     const widget = createCodeBlockWidget(code, 'javascript', 60);
 
     // Content should contain blessed color tags
-    expect(widget.content).toContain('{cyan-fg}const{/cyan-fg}');
-    expect(widget.content).toContain('{cyan-fg}function{/cyan-fg}');
+    expect(widget.content).toContain('{magenta-fg}const{/magenta-fg}');
+    expect(widget.content).toContain('{magenta-fg}function{/magenta-fg}');
     expect(widget.content).toContain('{yellow-fg}42{/yellow-fg}');
     expect(widget.content).toContain('{green-fg}"hello"{/green-fg}');
   });
@@ -189,8 +197,9 @@ describe('Code Block Widget Component - Widget Rendering', () => {
     const code = 'some plain text code';
     const widget = createCodeBlockWidget(code, 'unknown', 40);
 
-    // Content should match code exactly (no highlighting applied)
-    expect(widget.content).toBe(code);
+    // Content should include indentation guides for short lines
+    expect(widget.content).toContain(code);
+    expect(widget.content).toContain('{gray-fg}│{/gray-fg}'); // Indentation guides added
     expect(widget.width).toBe(40);
   });
 
@@ -198,8 +207,9 @@ describe('Code Block Widget Component - Widget Rendering', () => {
     const code = 'console.log("test");';
     const widget = createCodeBlockWidget(code, '', 50);
 
-    // Content should match code exactly (no highlighting applied)
-    expect(widget.content).toBe(code);
+    // Content should include indentation guides for short lines
+    expect(widget.content).toContain(code);
+    expect(widget.content).toContain('{gray-fg}│{/gray-fg}'); // Indentation guides added
   });
 
   it('should configure widget with proper defaults', () => {
@@ -244,11 +254,11 @@ program.parse();`;
     const result = highlightCode(realCliCode, 'typescript');
 
     // Verify key syntax elements are highlighted
-    expect(result).toContain('{cyan-fg}import{/cyan-fg}');
-    expect(result).toContain('{cyan-fg}const{/cyan-fg}');
-    expect(result).toContain('{cyan-fg}async{/cyan-fg}');
-    expect(result).toContain('{cyan-fg}try{/cyan-fg}');
-    expect(result).toContain('{cyan-fg}catch{/cyan-fg}');
+    expect(result).toContain('{magenta-fg}import{/magenta-fg}');
+    expect(result).toContain('{magenta-fg}const{/magenta-fg}');
+    expect(result).toContain('{magenta-fg}async{/magenta-fg}');
+    expect(result).toContain('{magenta-fg}try{/magenta-fg}');
+    expect(result).toContain('{magenta-fg}catch{/magenta-fg}');
 
     // Verify strings are highlighted
     expect(result).toContain('{green-fg}\'commander\'{/green-fg}');
@@ -310,13 +320,13 @@ function setupFileWatcher(directory: string, explorerState: any, layout: any, co
     const result = highlightCode(realAppCode, 'typescript');
 
     // Verify complex TypeScript syntax highlighting
-    expect(result).toContain('{cyan-fg}import{/cyan-fg}');
-    expect(result).toContain('{cyan-fg}const{/cyan-fg}');
-    expect(result).toContain('{cyan-fg}let{/cyan-fg}');
-    expect(result).toContain('{cyan-fg}function{/cyan-fg}');
-    expect(result).toContain('{cyan-fg}try{/cyan-fg}');
-    expect(result).toContain('{cyan-fg}catch{/cyan-fg}');
-    expect(result).toContain('{cyan-fg}if{/cyan-fg}');
+    expect(result).toContain('{magenta-fg}import{/magenta-fg}');
+    expect(result).toContain('{magenta-fg}const{/magenta-fg}');
+    expect(result).toContain('{magenta-fg}let{/magenta-fg}');
+    expect(result).toContain('{magenta-fg}function{/magenta-fg}');
+    expect(result).toContain('{magenta-fg}try{/magenta-fg}');
+    expect(result).toContain('{magenta-fg}catch{/magenta-fg}');
+    expect(result).toContain('{magenta-fg}if{/magenta-fg}');
 
     // Interface types and generics
     expect(result).toContain('BumblebeeConfig');
@@ -368,13 +378,13 @@ class UserService {
 
     // Keywords
     expect(result).toContain('{cyan-fg}interface{/cyan-fg}');
-    expect(result).toContain('{cyan-fg}class{/cyan-fg}');
-    expect(result).toContain('{cyan-fg}private{/cyan-fg}');
-    expect(result).toContain('{cyan-fg}constructor{/cyan-fg}');
-    expect(result).toContain('{cyan-fg}async{/cyan-fg}');
-    expect(result).toContain('{cyan-fg}throw{/cyan-fg}');
-    expect(result).toContain('{cyan-fg}new{/cyan-fg}');
-    expect(result).toContain('{cyan-fg}return{/cyan-fg}');
+    expect(result).toContain('{magenta-fg}class{/magenta-fg}');
+    expect(result).toContain('{magenta-fg}private{/magenta-fg}');
+    expect(result).toContain('{magenta-fg}constructor{/magenta-fg}');
+    expect(result).toContain('{magenta-fg}async{/magenta-fg}');
+    expect(result).toContain('{magenta-fg}throw{/magenta-fg}');
+    expect(result).toContain('{magenta-fg}new{/magenta-fg}');
+    expect(result).toContain('{magenta-fg}return{/magenta-fg}');
 
     // Multi-line comments
     expect(result).toContain('{gray-fg}/*');
@@ -443,10 +453,10 @@ class UserService {
 
     const result = highlightCode(realJson, 'json');
 
-    // String keys and values
-    expect(result).toContain('{green-fg}"name"{/green-fg}');
-    expect(result).toContain('{green-fg}"bumblebee"{/green-fg}');
-    expect(result).toContain('{green-fg}"description"{/green-fg}');
+    // String keys (magenta) and values (green)
+    expect(result).toContain('{magenta-fg}"name"{/magenta-fg}');
+    expect(result).toContain(': {green-fg}"bumblebee"{/green-fg}');
+    expect(result).toContain('{magenta-fg}"description"{/magenta-fg}');
     expect(result).toContain('{green-fg}"CLI Markdown Viewer & Editor"{/green-fg}');
 
     // Version numbers (inside version strings get highlighted)
@@ -466,8 +476,8 @@ program.version('1.0.0');`;
     expect(widget.label).toBe('┤ typescript ├');
 
     // Verify highlighting is applied
-    expect(widget.content).toContain('{cyan-fg}import{/cyan-fg}');
-    expect(widget.content).toContain('{cyan-fg}const{/cyan-fg}');
+    expect(widget.content).toContain('{magenta-fg}import{/magenta-fg}');
+    expect(widget.content).toContain('{magenta-fg}const{/magenta-fg}');
     expect(widget.content).toContain('{green-fg}\'commander\'{/green-fg}');
     expect(widget.content).toContain('{yellow-fg}1.0{/yellow-fg}');
   });
