@@ -6,6 +6,369 @@ import type { Code } from 'mdast';
 import highlight from 'cli-highlight';
 
 /**
+ * Language detection priority system
+ * Analyzes code content and returns the most likely programming language
+ * Used when no explicit language is specified in code blocks
+ *
+ * Uses a weighted scoring system where more unique/specific patterns
+ * get higher weights to avoid false positives from generic syntax.
+ */
+function detectLanguage(code: string): string {
+  // Convert to lowercase for case-insensitive matching
+  const lowerCode = code.toLowerCase();
+  const originalCode = code;
+
+  // Language patterns with weighted scores (higher = more specific/unique)
+  const detections: Array<{ lang: string, patterns: Array<{ pattern: string, weight: number }>, score: number }> = [
+    {
+      lang: 'python',
+      patterns: [
+        { pattern: 'def ', weight: 3 },
+        { pattern: 'import ', weight: 2 },
+        { pattern: 'from ', weight: 2 },
+        { pattern: 'class ', weight: 2 },
+        { pattern: 'print(', weight: 2 },
+        { pattern: 'if __name__', weight: 4 },
+        { pattern: 'self.', weight: 3 },
+        { pattern: 'lambda ', weight: 3 },
+        { pattern: 'try:', weight: 2 },
+        { pattern: 'except:', weight: 2 },
+        { pattern: 'with ', weight: 2 },
+        { pattern: '__init__', weight: 3 }
+      ],
+      score: 0
+    },
+    {
+      lang: 'javascript',
+      patterns: [
+        { pattern: 'function ', weight: 2 },
+        { pattern: 'const ', weight: 2 },
+        { pattern: 'let ', weight: 2 },
+        { pattern: 'var ', weight: 1 },
+        { pattern: '=>', weight: 3 },
+        { pattern: 'async ', weight: 3 },
+        { pattern: 'await ', weight: 3 },
+        { pattern: 'console.', weight: 4 },
+        { pattern: 'document.', weight: 4 },
+        { pattern: 'window.', weight: 4 },
+        { pattern: 'require(', weight: 3 },
+        { pattern: 'module.exports', weight: 4 },
+        { pattern: 'addEventListener', weight: 4 }
+      ],
+      score: 0
+    },
+    {
+      lang: 'typescript',
+      patterns: [
+        { pattern: 'interface ', weight: 5 },
+        { pattern: 'type ', weight: 4 },
+        { pattern: 'enum ', weight: 4 },
+        { pattern: 'implements ', weight: 4 },
+        { pattern: 'public ', weight: 3 },
+        { pattern: 'private ', weight: 3 },
+        { pattern: 'protected ', weight: 3 },
+        { pattern: ': string', weight: 4 },
+        { pattern: ': number', weight: 4 },
+        { pattern: ': boolean', weight: 4 },
+        { pattern: ': any', weight: 3 },
+        { pattern: 'readonly ', weight: 4 },
+        { pattern: 'abstract ', weight: 4 },
+        { pattern: '<', weight: 1 } // Generics indicator
+      ],
+      score: 0
+    },
+    {
+      lang: 'rust',
+      patterns: [
+        { pattern: 'fn ', weight: 3 },
+        { pattern: 'let ', weight: 2 },
+        { pattern: 'impl ', weight: 4 },
+        { pattern: 'struct ', weight: 4 },
+        { pattern: 'enum ', weight: 4 },
+        { pattern: 'match ', weight: 4 },
+        { pattern: 'use ', weight: 2 },
+        { pattern: 'mod ', weight: 3 },
+        { pattern: 'pub ', weight: 3 },
+        { pattern: 'crate::', weight: 5 },
+        { pattern: 'println!', weight: 5 },
+        { pattern: 'vec![', weight: 4 },
+        { pattern: 'Some(', weight: 4 },
+        { pattern: 'None', weight: 4 }
+      ],
+      score: 0
+    },
+    {
+      lang: 'go',
+      patterns: [
+        { pattern: 'func ', weight: 3 },
+        { pattern: 'package ', weight: 4 },
+        { pattern: 'import ', weight: 2 },
+        { pattern: 'go ', weight: 3 },
+        { pattern: 'chan ', weight: 5 },
+        { pattern: 'defer ', weight: 4 },
+        { pattern: 'goroutine', weight: 4 },
+        { pattern: 'select ', weight: 4 },
+        { pattern: 'interface{}', weight: 5 },
+        { pattern: 'make(', weight: 4 },
+        { pattern: 'new(', weight: 3 },
+        { pattern: 'range ', weight: 4 }
+      ],
+      score: 0
+    },
+    {
+      lang: 'c',
+      patterns: [
+        { pattern: '#include', weight: 5 },
+        { pattern: 'int main', weight: 5 },
+        { pattern: 'printf(', weight: 4 },
+        { pattern: 'scanf(', weight: 4 },
+        { pattern: 'malloc(', weight: 4 },
+        { pattern: 'free(', weight: 4 },
+        { pattern: 'void ', weight: 2 },
+        { pattern: 'char ', weight: 2 },
+        { pattern: 'int ', weight: 1 },
+        { pattern: 'float ', weight: 2 },
+        { pattern: 'double ', weight: 2 },
+        { pattern: 'struct ', weight: 3 },
+        { pattern: 'typedef ', weight: 4 }
+      ],
+      score: 0
+    },
+    {
+      lang: 'cpp',
+      patterns: [
+        { pattern: '#include', weight: 4 },
+        { pattern: 'std::', weight: 5 },
+        { pattern: 'cout <<', weight: 5 },
+        { pattern: 'cin >>', weight: 5 },
+        { pattern: 'class ', weight: 3 },
+        { pattern: 'public:', weight: 4 },
+        { pattern: 'private:', weight: 4 },
+        { pattern: 'protected:', weight: 4 },
+        { pattern: 'virtual ', weight: 4 },
+        { pattern: 'template<', weight: 5 },
+        { pattern: 'namespace ', weight: 4 },
+        { pattern: 'using namespace', weight: 5 }
+      ],
+      score: 0
+    },
+    {
+      lang: 'java',
+      patterns: [
+        { pattern: 'public class', weight: 5 },
+        { pattern: 'import java', weight: 5 },
+        { pattern: 'System.out', weight: 5 },
+        { pattern: 'public static', weight: 4 },
+        { pattern: 'private ', weight: 2 },
+        { pattern: 'protected ', weight: 2 },
+        { pattern: 'interface ', weight: 3 },
+        { pattern: 'extends ', weight: 4 },
+        { pattern: 'implements ', weight: 4 },
+        { pattern: 'throws ', weight: 3 },
+        { pattern: 'try {', weight: 3 },
+        { pattern: 'catch ', weight: 3 }
+      ],
+      score: 0
+    },
+    {
+      lang: 'ruby',
+      patterns: [
+        { pattern: 'def ', weight: 3 },
+        { pattern: 'class ', weight: 2 },
+        { pattern: 'require ', weight: 3 },
+        { pattern: 'gem ', weight: 4 },
+        { pattern: 'puts ', weight: 3 },
+        { pattern: 'end', weight: 1 },
+        { pattern: 'do ', weight: 2 },
+        { pattern: 'if ', weight: 1 },
+        { pattern: 'elsif ', weight: 3 },
+        { pattern: 'unless ', weight: 3 },
+        { pattern: 'attr_accessor', weight: 5 },
+        { pattern: 'initialize', weight: 4 },
+        { pattern: 'self.', weight: 3 }
+      ],
+      score: 0
+    },
+    {
+      lang: 'bash',
+      patterns: [
+        { pattern: '#!/bin/bash', weight: 5 },
+        { pattern: '#!/bin/sh', weight: 5 },
+        { pattern: 'function ', weight: 3 },
+        { pattern: 'echo ', weight: 2 },
+        { pattern: 'if [', weight: 4 },
+        { pattern: 'then', weight: 3 },
+        { pattern: 'fi', weight: 3 },
+        { pattern: 'for ', weight: 2 },
+        { pattern: 'do', weight: 2 },
+        { pattern: 'done', weight: 2 },
+        { pattern: 'while ', weight: 2 },
+        { pattern: 'case ', weight: 3 },
+        { pattern: 'esac', weight: 3 },
+        { pattern: 'source ', weight: 3 },
+        { pattern: 'export ', weight: 3 }
+      ],
+      score: 0
+    },
+    {
+      lang: 'shell',
+      patterns: [
+        { pattern: '#!/bin/', weight: 4 },
+        { pattern: 'echo ', weight: 2 },
+        { pattern: 'ls ', weight: 2 },
+        { pattern: 'cd ', weight: 2 },
+        { pattern: 'mkdir ', weight: 2 },
+        { pattern: 'rm ', weight: 2 },
+        { pattern: 'cp ', weight: 2 },
+        { pattern: 'mv ', weight: 2 },
+        { pattern: 'grep ', weight: 3 },
+        { pattern: 'sed ', weight: 3 },
+        { pattern: 'awk ', weight: 3 },
+        { pattern: 'chmod ', weight: 3 },
+        { pattern: 'chown ', weight: 3 }
+      ],
+      score: 0
+    },
+    {
+      lang: 'sql',
+      patterns: [
+        { pattern: 'SELECT ', weight: 5 },
+        { pattern: 'FROM ', weight: 4 },
+        { pattern: 'WHERE ', weight: 4 },
+        { pattern: 'INSERT ', weight: 5 },
+        { pattern: 'UPDATE ', weight: 5 },
+        { pattern: 'DELETE ', weight: 5 },
+        { pattern: 'CREATE ', weight: 4 },
+        { pattern: 'ALTER ', weight: 4 },
+        { pattern: 'DROP ', weight: 4 },
+        { pattern: 'JOIN ', weight: 4 },
+        { pattern: 'GROUP BY ', weight: 4 },
+        { pattern: 'ORDER BY ', weight: 4 },
+        { pattern: 'LIMIT ', weight: 3 }
+      ],
+      score: 0
+    },
+    {
+      lang: 'json',
+      patterns: [
+        { pattern: '{"', weight: 3 },
+        { pattern: '":', weight: 2 },
+        { pattern: 'true', weight: 2 },
+        { pattern: 'false', weight: 2 },
+        { pattern: 'null', weight: 2 }
+      ],
+      score: 0
+    },
+    {
+      lang: 'yaml',
+      patterns: [
+        { pattern: '---', weight: 4 },
+        { pattern: /^  /m, weight: 2 }, // Indentation
+        { pattern: ': ', weight: 2 },
+        { pattern: '- ', weight: 2 }
+      ],
+      score: 0
+    },
+    {
+      lang: 'html',
+      patterns: [
+        { pattern: '<!DOCTYPE', weight: 5 },
+        { pattern: '<html>', weight: 4 },
+        { pattern: '<head>', weight: 3 },
+        { pattern: '<body>', weight: 3 },
+        { pattern: '<div>', weight: 2 },
+        { pattern: '<p>', weight: 2 },
+        { pattern: '<script>', weight: 4 },
+        { pattern: '<style>', weight: 4 },
+        { pattern: 'href=', weight: 3 },
+        { pattern: 'src=', weight: 3 }
+      ],
+      score: 0
+    },
+    {
+      lang: 'css',
+      patterns: [
+        { pattern: '{', weight: 1 },
+        { pattern: '}', weight: 1 },
+        { pattern: ';', weight: 1 },
+        { pattern: '@media', weight: 5 },
+        { pattern: '@import', weight: 4 },
+        { pattern: 'color:', weight: 3 },
+        { pattern: 'background:', weight: 3 },
+        { pattern: 'margin:', weight: 2 },
+        { pattern: 'padding:', weight: 2 },
+        { pattern: 'font-size:', weight: 3 }
+      ],
+      score: 0
+    },
+    {
+      lang: 'markdown',
+      patterns: [
+        { pattern: '# ', weight: 3 },
+        { pattern: '## ', weight: 3 },
+        { pattern: '**', weight: 2 },
+        { pattern: '* ', weight: 2 },
+        { pattern: '- ', weight: 2 },
+        { pattern: '1. ', weight: 3 },
+        { pattern: '[', weight: 2 },
+        { pattern: '](', weight: 2 },
+        { pattern: '```', weight: 4 }
+      ],
+      score: 0
+    },
+    {
+      lang: 'toml',
+      patterns: [
+        { pattern: '[', weight: 2 },
+        { pattern: ']', weight: 2 },
+        { pattern: '=', weight: 1 },
+        { pattern: 'true', weight: 2 },
+        { pattern: 'false', weight: 2 }
+      ],
+      score: 0
+    }
+  ];
+
+  // Score each language based on weighted pattern matches
+  for (const detection of detections) {
+    let score = 0;
+    for (const { pattern, weight } of detection.patterns) {
+      let regex: RegExp;
+
+      if (pattern instanceof RegExp) {
+        // Already a RegExp object
+        regex = new RegExp(pattern.source, pattern.flags + 'gi');
+      } else {
+        // String pattern - escape special regex chars
+        const escapedPattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        regex = new RegExp(escapedPattern, 'gi');
+      }
+
+      const matches = lowerCode.match(regex);
+      if (matches) {
+        score += matches.length * weight;
+      }
+    }
+    detection.score = score;
+  }
+
+  // Find the language with the highest score
+  let bestLang = '';
+  let bestScore = 0;
+
+  for (const detection of detections) {
+    if (detection.score > bestScore) {
+      bestScore = detection.score;
+      bestLang = detection.lang;
+    }
+  }
+
+  // Only return a language if we have sufficient confidence (score >= 5)
+  // This helps avoid false positives from generic patterns
+  return bestScore >= 5 ? bestLang : '';
+}
+
+/**
  * Render code using cli-highlight as fallback
  * Provides basic syntax highlighting when Shiki is unavailable
  */
@@ -38,7 +401,12 @@ function renderCodeWithCliHighlight(code: string, lang: string): string {
  */
 export function renderCodeBlock(node: Code, terminalWidth: number, theme: BumblebeeTheme): string {
   const code = node.value;
-  const lang = node.lang || '';
+  let lang = node.lang || '';
+
+  // Apply language detection if no explicit language provided
+  if (!lang) {
+    lang = detectLanguage(code);
+  }
 
   // Get syntax-highlighted ANSI code with fallback hierarchy
   let highlightedCode: string;

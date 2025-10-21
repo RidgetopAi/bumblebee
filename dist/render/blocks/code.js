@@ -3,6 +3,114 @@ import { wrapText } from '../ansi/wrap.js';
 import { getTextWidth } from '../ansi/width.js';
 import highlight from 'cli-highlight';
 /**
+ * Language detection priority system
+ * Analyzes code content and returns the most likely programming language
+ * Used when no explicit language is specified in code blocks
+ */
+function detectLanguage(code) {
+    // Convert to lowercase for case-insensitive matching
+    const lowerCode = code.toLowerCase();
+    // Language patterns with their detection keywords/scores
+    const patterns = {
+        python: {
+            patterns: ['def ', 'import ', 'from ', 'class ', 'print(', 'if __name__', 'self.', 'lambda ', 'try:', 'except:', 'with '],
+            score: 0
+        },
+        javascript: {
+            patterns: ['function ', 'const ', 'let ', 'var ', 'import ', 'export ', '=>', 'async ', 'await ', 'console.', 'document.', 'window.', 'require(', 'module.exports'],
+            score: 0
+        },
+        typescript: {
+            patterns: ['interface ', 'type ', 'enum ', 'implements ', 'public ', 'private ', 'protected ', ': string', ': number', ': boolean', ': any', 'readonly ', 'abstract '],
+            score: 0
+        },
+        rust: {
+            patterns: ['fn ', 'let ', 'impl ', 'struct ', 'enum ', 'match ', 'use ', 'mod ', 'pub ', 'crate::', 'println!', 'vec![', 'Some(', 'None'],
+            score: 0
+        },
+        go: {
+            patterns: ['func ', 'package ', 'import ', 'go ', 'chan ', 'defer ', 'goroutine', 'select ', 'interface{}', 'make(', 'new(', 'range '],
+            score: 0
+        },
+        c: {
+            patterns: ['#include', 'int main', 'printf(', 'scanf(', 'malloc(', 'free(', 'void ', 'char ', 'int ', 'float ', 'double ', 'struct ', 'typedef '],
+            score: 0
+        },
+        cpp: {
+            patterns: ['#include', 'std::', 'cout <<', 'cin >>', 'class ', 'public:', 'private:', 'protected:', 'virtual ', 'template<', 'namespace ', 'using namespace'],
+            score: 0
+        },
+        java: {
+            patterns: ['public class', 'import java', 'System.out', 'public static', 'private ', 'protected ', 'interface ', 'extends ', 'implements ', 'throws ', 'try {', 'catch '],
+            score: 0
+        },
+        ruby: {
+            patterns: ['def ', 'class ', 'require ', 'gem ', 'puts ', 'end', 'do ', 'if ', 'elsif ', 'unless ', 'attr_accessor', 'initialize', 'self.'],
+            score: 0
+        },
+        shell: {
+            patterns: ['#!/bin/bash', '#!/bin/sh', 'echo ', 'ls ', 'cd ', 'mkdir ', 'rm ', 'cp ', 'mv ', 'grep ', 'sed ', 'awk ', 'chmod ', 'chown '],
+            score: 0
+        },
+        bash: {
+            patterns: ['#!/bin/bash', 'function ', 'echo ', 'if [', 'then', 'fi', 'for ', 'do', 'done', 'while ', 'case ', 'esac', 'source ', 'export '],
+            score: 0
+        },
+        markdown: {
+            patterns: ['# ', '## ', '### ', '**', '* ', '- ', '1. ', '[', '](', '```', '---', '==='],
+            score: 0
+        },
+        json: {
+            patterns: ['{', '}', '[', ']', '"', ':', 'true', 'false', 'null'],
+            score: 0
+        },
+        yaml: {
+            patterns: ['---', 'key:', '- ', '  ', ': ', 'true', 'false', 'null'],
+            score: 0
+        },
+        toml: {
+            patterns: ['[', ']', '=', 'true', 'false'],
+            score: 0
+        },
+        html: {
+            patterns: ['<!DOCTYPE', '<html>', '<head>', '<body>', '<div>', '<p>', '<span>', '<script>', '<style>', '</', 'href=', 'src='],
+            score: 0
+        },
+        css: {
+            patterns: ['{', '}', ';', ':', '#', '.', '@media', '@import', 'color:', 'background:', 'margin:', 'padding:', 'font-size:'],
+            score: 0
+        },
+        sql: {
+            patterns: ['SELECT ', 'FROM ', 'WHERE ', 'INSERT ', 'UPDATE ', 'DELETE ', 'CREATE ', 'ALTER ', 'DROP ', 'JOIN ', 'GROUP BY ', 'ORDER BY ', 'LIMIT '],
+            score: 0
+        }
+    };
+    // Score each language based on pattern matches
+    for (const [lang, config] of Object.entries(patterns)) {
+        let score = 0;
+        for (const pattern of config.patterns) {
+            // Count occurrences of each pattern
+            const regex = new RegExp(pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+            const matches = lowerCode.match(regex);
+            if (matches) {
+                score += matches.length;
+            }
+        }
+        patterns[lang].score = score;
+    }
+    // Find the language with the highest score
+    let bestLang = '';
+    let bestScore = 0;
+    for (const [lang, config] of Object.entries(patterns)) {
+        if (config.score > bestScore) {
+            bestScore = config.score;
+            bestLang = lang;
+        }
+    }
+    // Only return a language if we have at least some confidence (score >= 2)
+    return bestScore >= 2 ? bestLang : '';
+}
+/**
  * Render code using cli-highlight as fallback
  * Provides basic syntax highlighting when Shiki is unavailable
  */
@@ -35,7 +143,11 @@ function renderCodeWithCliHighlight(code, lang) {
  */
 export function renderCodeBlock(node, terminalWidth, theme) {
     const code = node.value;
-    const lang = node.lang || '';
+    let lang = node.lang || '';
+    // Apply language detection if no explicit language provided
+    if (!lang) {
+        lang = detectLanguage(code);
+    }
     // Get syntax-highlighted ANSI code with fallback hierarchy
     let highlightedCode;
     try {
