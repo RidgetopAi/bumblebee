@@ -189,7 +189,9 @@ describe('Code Block Widget Component - Widget Rendering', () => {
     const code = 'some plain text code';
     const widget = createCodeBlockWidget(code, 'unknown', 40);
 
-    expect(widget.content).toBe(code); // No highlighting applied
+    // Content should include indentation guides for short lines
+    expect(widget.content).toContain(code);
+    expect(widget.content).toContain('{gray-fg}│{/gray-fg}'); // Indentation guides added
     expect(widget.width).toBe(40);
   });
 
@@ -197,7 +199,9 @@ describe('Code Block Widget Component - Widget Rendering', () => {
     const code = 'console.log("test");';
     const widget = createCodeBlockWidget(code, '', 50);
 
-    expect(widget.content).toBe(code); // Plain text when no language
+    // Content should include indentation guides for short lines
+    expect(widget.content).toContain(code);
+    expect(widget.content).toContain('{gray-fg}│{/gray-fg}'); // Indentation guides added
   });
 
   it('should configure widget with proper defaults', () => {
