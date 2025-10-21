@@ -17,8 +17,8 @@ describe('MDAST Renderer', () => {
     return render(markdown, width, bumblebeeTheme);
   }
 
-  function expectNoCrash(name: string, width: number = 80): void {
-    expect(() => renderFixture(name, width)).not.toThrow();
+  async function expectNoCrash(name: string, width: number = 80): Promise<void> {
+    await renderFixture(name, width);
   }
 
   function expectContainsAnsi(output: string): void {
@@ -42,14 +42,14 @@ describe('MDAST Renderer', () => {
       const output = await renderFixture('simple.md');
       expectContainsAnsi(output);
 
-      // Check for heading prefixes in plain text
+      // Check for heading text in plain text (without # prefixes)
       expectPlainText(output, [
-        '# Simple Markdown Test',
-        '## Second Level Heading',
-        '### Third Level Heading',
-        '#### Fourth Level Heading',
-        '##### Fifth Level Heading',
-        '###### Sixth Level Heading'
+        'Simple Markdown Test',
+        'Second Level Heading',
+        'Third Level Heading',
+        'Fourth Level Heading',
+        'Fifth Level Heading',
+        'Sixth Level Heading'
       ]);
     });
 
@@ -108,9 +108,9 @@ describe('MDAST Renderer', () => {
       expect(plain).toContain('Right');
     });
 
-    it('wraps table content appropriately', () => {
-      expectNoCrash('tables.md', 80);
-      expectNoCrash('tables.md', 120);
+    it('wraps table content appropriately', async () => {
+      await expectNoCrash('tables.md', 80);
+      await expectNoCrash('tables.md', 120);
     });
   });
 
@@ -161,7 +161,7 @@ describe('MDAST Renderer', () => {
   const plain = stripAnsi(output);
 
   // Check for various node types
-  expect(plain).toMatch(/^# /m); // Headings
+  expect(plain).toMatch(/^Complex Markdown Test/m); // Headings (without # prefix)
   expect(plain).toContain('bold text'); // Bold (converted from **bold text**)
   expect(plain).toContain('italic text'); // Italic (converted from *italic text*)
   // Note: Inline code not yet implemented in renderer

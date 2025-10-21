@@ -5,7 +5,7 @@ import chokidar from 'chokidar';
 import { BumblebeeConfig } from './config/loadConfig.js';
 import { createLayout, appendLayoutToScreen, updateLayoutOnResize, type Layout } from './tui/layout.js';
 import { setupInput } from './tui/input.js';
-import { render } from './render/mdastToAnsi.js';
+import { render, type RenderResult } from './render/mdastToAnsi.js';
 import { getThemeForConfig } from './config/theme-bumblebee.js';
 import { createExplorerState, renderExplorer, isExplorerVisible, refreshExplorer, type ExplorerState } from './tui/panes/explorer.js';
 import { type TuiRestoreState } from './tui/restore.js';
@@ -168,6 +168,33 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
   let currentTheme = getThemeForConfig(config.trueColor);
   let currentFilePath = fileOrDir;
 
+  // Helper function to apply render result to preview pane
+  function applyRenderResult(result: RenderResult, previewPane: any): void {
+    if (typeof result === 'string') {
+      // Stdout mode or simple content
+      previewPane.content = result;
+    } else {
+      // TUI mode with widgets
+      previewPane.content = result.textContent;
+
+      // Clear existing widget children (except the built-in ones)
+      const childrenToRemove = previewPane.children.filter((child: any) =>
+        child !== previewPane._label && child !== previewPane._border
+      );
+      childrenToRemove.forEach((child: any) => {
+        previewPane.remove(child);
+      });
+
+      // Add new widgets at calculated positions
+      for (const widgetPlacement of result.widgets) {
+        const widget = widgetPlacement.widget;
+        // Position widget based on line number (rough approximation)
+        widget.top = widgetPlacement.startLine;
+        previewPane.append(widget);
+      }
+    }
+  }
+
   try {
     // Check if file exists and is a file
     if (!fs.existsSync(fileOrDir)) {
@@ -185,8 +212,8 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
         // Initial render at current terminal width
         // Use blessed tags (useBlessedTags = true) for TUI mode
         const width = process.stdout.columns || 80;
-        const rendered = await render(markdownContent, width, currentTheme, true);
-        layout.preview.content = rendered;
+        const renderResult = await render(markdownContent, width, currentTheme, true);
+        applyRenderResult(renderResult, layout.preview);
         screen.render();
       }
     }
@@ -221,8 +248,8 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
 
       // Render at current terminal width
       const width = process.stdout.columns || 80;
-      const rendered = await render(markdownContent, width, currentTheme, true);
-      layout.preview.content = rendered;
+      const renderResult = await render(markdownContent, width, currentTheme, true);
+      applyRenderResult(renderResult, layout.preview);
 
       // Reset preview scroll position
       layout.preview.scrollTo(0);
@@ -270,8 +297,8 @@ export async function runApp(config: BumblebeeConfig, fileOrDir: string, stdout:
     // Use blessed tags (useBlessedTags = true) for TUI mode
     if (markdownContent) {
       const newWidth = process.stdout.columns || 80;
-      const rendered = await render(markdownContent, newWidth, currentTheme, true);
-      layout.preview.content = rendered;
+      const renderResult = await render(markdownContent, newWidth, currentTheme, true);
+      applyRenderResult(renderResult, layout.preview);
     }
 
     // Update explorer content if visible
