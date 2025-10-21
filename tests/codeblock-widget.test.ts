@@ -1,4 +1,27 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// Mock neo-blessed to avoid requiring a screen
+vi.mock('neo-blessed', () => ({
+  default: {
+    box: vi.fn((config) => ({
+      ...config,
+      // Add blessed-specific properties that tests expect
+      width: config.width,
+      height: config.height,
+      content: config.content,
+      border: config.border,
+      padding: config.padding,
+      style: config.style,
+      tags: config.tags,
+      scrollable: config.scrollable,
+      // Mock blessed methods
+      setContent: vi.fn(),
+      render: vi.fn(),
+    })),
+  },
+}));
+
+import { createCodeBlockWidget } from '../src/tui/components/codeBlock';
 
 // Import the syntax highlighting functions directly for testing
 function highlightCode(code: string, lang: string): string {
@@ -103,5 +126,74 @@ describe('Code Block Widget Component - Syntax Highlighting', () => {
     expect(result).toContain('{cyan-fg}interface{/cyan-fg}');
     expect(result).toContain('{cyan-fg}const{/cyan-fg}');
     expect(result).toContain('{green-fg}"test"{/green-fg}');
+  });
+});
+
+describe('Code Block Widget Component - Widget Rendering', () => {
+  it('should create a blessed Box widget with correct configuration', () => {
+    const code = 'const x = 42;';
+    const widget = createCodeBlockWidget(code, 'javascript', 50);
+
+    // Verify it's a blessed box (has blessed properties)
+    expect(widget).toBeDefined();
+    expect(typeof widget).toBe('object');
+
+    // Check basic blessed box properties
+    expect(widget.width).toBe(50);
+    expect(widget.height).toBe('shrink');
+    expect(widget.tags).toBe(true);
+    expect(widget.scrollable).toBe(false);
+
+    // Check border configuration
+    expect(widget.border).toBeDefined();
+    expect(widget.border.type).toBe('line');
+    expect(widget.border.fg).toBe('yellow');
+
+    // Check padding configuration
+    expect(widget.padding).toBeDefined();
+    expect(widget.padding.left).toBe(1);
+    expect(widget.padding.right).toBe(1);
+
+    // Check style configuration
+    expect(widget.style).toBeDefined();
+    expect(widget.style.fg).toBe('white');
+    expect(widget.style.bg).toBe('black');
+  });
+
+  it('should apply syntax highlighting to widget content', () => {
+    const code = 'const x = 42; function test() { return "hello"; }';
+    const widget = createCodeBlockWidget(code, 'javascript', 60);
+
+    // Content should contain blessed color tags
+    expect(widget.content).toContain('{cyan-fg}const{/cyan-fg}');
+    expect(widget.content).toContain('{cyan-fg}function{/cyan-fg}');
+    expect(widget.content).toContain('{yellow-fg}42{/yellow-fg}');
+    expect(widget.content).toContain('{green-fg}"hello"{/green-fg}');
+  });
+
+  it('should handle plain text for unsupported languages', () => {
+    const code = 'some plain text code';
+    const widget = createCodeBlockWidget(code, 'unknown', 40);
+
+    expect(widget.content).toBe(code); // No highlighting applied
+    expect(widget.width).toBe(40);
+  });
+
+  it('should handle empty language parameter', () => {
+    const code = 'console.log("test");';
+    const widget = createCodeBlockWidget(code, '', 50);
+
+    expect(widget.content).toBe(code); // Plain text when no language
+  });
+
+  it('should configure widget with proper defaults', () => {
+    const code = 'test code';
+    const widget = createCodeBlockWidget(code); // No lang or width specified
+
+    expect(widget.width).toBeUndefined(); // Default blessed behavior
+    expect(widget.content).toBe(code); // Plain text for no language
+    expect(widget.border.fg).toBe('yellow');
+    expect(widget.padding.left).toBe(1);
+    expect(widget.padding.right).toBe(1);
   });
 });
