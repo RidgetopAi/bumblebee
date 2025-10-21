@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="400" height="400">
+  <!-- Pixelated/8-bit Bumblebee Logo -->
+  <defs>
+    <style>
+      .pixel { shape-rendering: crispEdges; }
+    </style>
+  </defs>
+  
+  <!-- Define pixel size -->
+  <g class="pixel">
+    <!-- Antennae -->
+    <rect x="70" y="40" width="10" height="10" fill="#212121"/>
+    <rect x="120" y="40" width="10" height="10" fill="#212121"/>
+    <rect x="75" y="50" width="10" height="10" fill="#212121"/>
+    <rect x="115" y="50" width="10" height="10" fill="#212121"/>
+    
+    <!-- Head -->
+    <rect x="85" y="60" width="10" height="10" fill="#212121"/>
+    <rect x="105" y="60" width="10" height="10" fill="#212121"/>
+    <rect x="80" y="70" width="10" height="10" fill="#212121"/>
+    <rect x="90" y="70" width="10" height="10" fill="#212121"/>
+    <rect x="100" y="70" width="10" height="10" fill="#212121"/>
+    <rect x="110" y="70" width="10" height="10" fill="#212121"/>
+    
+    <!-- Body - Row 1 (Yellow) -->
+    <rect x="70" y="80" width="10" height="10" fill="#FFC107"/>
+    <rect x="80" y="80" width="10" height="10" fill="#FFC107"/>
+    <rect x="90" y="80" width="10" height="10" fill="#FFC107"/>
+    <rect x="100" y="80" width="10" height="10" fill="#FFC107"/>
+    <rect x="110" y="80" width="10" height="10" fill="#FFC107"/>
+    <rect x="120" y="80" width="10" height="10" fill="#FFC107"/>
+    
+    <!-- Body - Row 2 (Black stripe) -->
+    <rect x="65" y="90" width="10" height="10" fill="#212121"/>
+    <rect x="75" y="90" width="10" height="10" fill="#212121"/>
+    <rect x="85" y="90" width="10" height="10" fill="#212121"/>
+    <rect x="95" y="90" width="10" height="10" fill="#212121"/>
+    <rect x="105" y="90" width="10" height="10" fill="#212121"/>
+    <rect x="115" y="90" width="10" height="10" fill="#212121"/>
+    <rect x="125" y="90" width="10" height="10" fill="#212121"/>
+    
+    <!-- Body - Row 3 (Yellow) -->
+    <rect x="65" y="100" width="10" height="10" fill="#FFC107"/>
+    <rect x="75" y="100" width="10" height="10" fill="#FFC107"/>
+    <rect x="85" y="100" width="10" height="10" fill="#FFC107"/>
+    <rect x="95" y="100" width="10" height="10" fill="#FFC107"/>
+    <rect x="105" y="100" width="10" height="10" fill="#FFC107"/>
+    <rect x="115" y="100" width="10" height="10" fill="#FFC107"/>
+    <rect x="125" y="100" width="10" height="10" fill="#FFC107"/>
+    
+    <!-- Body - Row 4 (Black stripe) -->
+    <rect x="70" y="110" width="10" height="10" fill="#212121"/>
+    <rect x="80" y="110" width="10" height="10" fill="#212121"/>
+    <rect x="90" y="110" width="10" height="10" fill="#212121"/>
+    <rect x="100" y="110" width="10" height="10" fill="#212121"/>
+    <rect x="110" y="110" width="10" height="10" fill="#212121"/>
+    <rect x="120" y="110" width="10" height="10" fill="#212121"/>
+    
+    <!-- Body - Row 5 (Yellow) -->
+    <rect x="75" y="120" width="10" height="10" fill="#FFC107"/>
+    <rect x="85" y="120" width="10" height="10" fill="#FFC107"/>
+    <rect x="95" y="120" width="10" height="10" fill="#FFC107"/>
+    <rect x="105" y="120" width="10" height="10" fill="#FFC107"/>
+    <rect x="115" y="120" width="10" height="10" fill="#FFC107"/>
+    
+    <!-- Body - Row 6 (Black stripe) -->
+    <rect x="80" y="130" width="10" height="10" fill="#212121"/>
+    <rect x="90" y="130" width="10" height="10" fill="#212121"/>
+    <rect x="100" y="130" width="10" height="10" fill="#212121"/>
+    <rect x="110" y="130" width="10" height="10" fill="#212121"/>
+    
+    <!-- Wings (light blue/gray) - Left wing -->
+    <rect x="40" y="80" width="10" height="10" fill="#90CAF9"/>
+    <rect x="45" y="90" width="10" height="10" fill="#90CAF9"/>
+    <rect x="50" y="100" width="10" height="10" fill="#90CAF9"/>
+    <rect x="50" y="110" width="10" height="10" fill="#90CAF9"/>
+    <rect x="55" y="120" width="10" height="10" fill="#90CAF9"/>
+    <rect x="35" y="90" width="10" height="10" fill="#90CAF9"/>
+    <rect x="40" y="100" width="10" height="10" fill="#90CAF9"/>
+    <rect x="45" y="110" width="10" height="10" fill="#90CAF9"/>
+    
+    <!-- Wings - Right wing -->
+    <rect x="150" y="80" width="10" height="10" fill="#90CAF9"/>
+    <rect x="145" y="90" width="10" height="10" fill="#90CAF9"/>
+    <rect x="140" y="100" width="10" height="10" fill="#90CAF9"/>
+    <rect x="140" y="110" width="10" height="10" fill="#90CAF9"/>
+    <rect x="135" y="120" width="10" height="10" fill="#90CAF9"/>
+    <rect x="155" y="90" width="10" height="10" fill="#90CAF9"/>
+    <rect x="150" y="100" width="10" height="10" fill="#90CAF9"/>
+    <rect x="145" y="110" width="10" height="10" fill="#90CAF9"/>
+  </g>
+</svg>
