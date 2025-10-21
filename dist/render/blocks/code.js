@@ -44,33 +44,31 @@ export function renderCodeBlock(node, terminalWidth, theme) {
     const contentWidth = terminalWidth - borderWidth - paddingWidth;
     // Wrap long lines and add indentation guides
     const wrappedLines = codeLines.flatMap(line => wrapCodeLine(line, contentWidth));
-    // Create top border
-    const topBorder = theme.current.yellowA + '─'.repeat(terminalWidth - 2) + '\x1b[39m';
-    // Create bottom border (same as top)
-    const bottomBorder = topBorder;
     // Create content lines with borders, padding, and indentation guides
     const contentLines = wrappedLines.map((line, index) => {
         // Add indentation guides (faint │ every 4 columns in the content area)
-        const lineWithGuides = addIndentationGuides(line, contentWidth);
+        const lineWithGuides = addIndentationGuides(line, contentWidth, theme);
         // Create the full line: │ padding content padding │
         const leftBorder = theme.current.yellowA + '│' + '\x1b[39m';
         const rightBorder = theme.current.yellowA + '│' + '\x1b[39m';
         const padding = ' ';
         return leftBorder + padding + lineWithGuides + padding + rightBorder;
     });
-    // Add language badge to top-right if language is specified
-    let finalTopBorder = topBorder;
+    // Create top border with language badge if specified
+    let topBorder = theme.current.yellowA + '─'.repeat(terminalWidth - 2) + '\x1b[39m';
     if (lang) {
         const badge = createLanguageBadge(lang, theme);
         const badgeWidth = getTextWidth(lang) + 4; // ┤ Lang ├
         const badgeStartPos = terminalWidth - badgeWidth - 1; // Leave 1 space from right
-        // Overlay badge on the top border
-        const beforeBadge = finalTopBorder.substring(0, badgeStartPos);
-        const afterBadge = finalTopBorder.substring(badgeStartPos + badgeWidth);
-        finalTopBorder = beforeBadge + badge + afterBadge;
+        // Overlay badge on the top border by replacing characters
+        const beforeBadge = topBorder.substring(0, badgeStartPos);
+        const afterBadge = topBorder.substring(badgeStartPos + badgeWidth);
+        topBorder = beforeBadge + badge + afterBadge;
     }
+    // Create bottom border (same as plain top border)
+    const bottomBorder = theme.current.yellowA + '─'.repeat(terminalWidth - 2) + '\x1b[39m';
     // Combine all lines
-    return [finalTopBorder, ...contentLines, bottomBorder].join('\n');
+    return [topBorder, ...contentLines, bottomBorder].join('\n');
 }
 /**
  * Fallback renderer for plain code blocks when Shiki is not available
@@ -90,7 +88,7 @@ function renderPlainCodeBlock(code, lang, terminalWidth, theme) {
     // Create content lines with borders, padding, and indentation guides
     const contentLines = wrappedLines.map((line, index) => {
         // Add indentation guides (faint │ every 4 columns in the content area)
-        const lineWithGuides = addIndentationGuides(line, contentWidth);
+        const lineWithGuides = addIndentationGuides(line, contentWidth, theme);
         // Create the full line: │ padding content padding │
         const leftBorder = theme.current.yellowA + '│' + '\x1b[39m';
         const rightBorder = theme.current.yellowA + '│' + '\x1b[39m';
@@ -98,18 +96,22 @@ function renderPlainCodeBlock(code, lang, terminalWidth, theme) {
         return leftBorder + padding + lineWithGuides + padding + rightBorder;
     });
     // Add language badge to top-right if language is specified
-    let finalTopBorder = topBorder;
+    let finalLines = contentLines;
     if (lang) {
         const badge = createLanguageBadge(lang, theme);
-        const badgeWidth = getTextWidth(lang) + 4; // ┤ Lang ├
-        const badgeStartPos = terminalWidth - badgeWidth - 1; // Leave 1 space from right
-        // Overlay badge on the top border
-        const beforeBadge = finalTopBorder.substring(0, badgeStartPos);
-        const afterBadge = finalTopBorder.substring(badgeStartPos + badgeWidth);
-        finalTopBorder = beforeBadge + badge + afterBadge;
+        // Overlay badge on the top border line
+        if (finalLines.length > 0) {
+            const topLine = finalLines[0];
+            const badgeWidth = getTextWidth(lang) + 4; // ┤ Lang ├
+            const badgeStartPos = terminalWidth - badgeWidth - 1; // Leave 1 space from right
+            // Replace part of the top line with the badge
+            const beforeBadge = topLine.substring(0, badgeStartPos);
+            const afterBadge = topLine.substring(badgeStartPos + badgeWidth);
+            finalLines[0] = beforeBadge + badge + afterBadge;
+        }
     }
     // Combine all lines
-    return [finalTopBorder, ...contentLines, bottomBorder].join('\n');
+    return [topBorder, ...finalLines, bottomBorder].join('\n');
 }
 /**
  * Wrap a single line of code if it's too long
@@ -124,13 +126,26 @@ function wrapCodeLine(line, maxWidth) {
     return wrapped.split('\n');
 }
 /**
- * Add indentation guides (faint │) every 4 columns
- */
-function addIndentationGuides(line, contentWidth) {
-    // For now, we'll keep this simple and just return the line
-    // Indentation guides will be implemented in a future enhancement
-    // when we have proper tab/indentation handling
-    return line;
+* Add indentation guides (faint │) every 4 columns
+*/
+function addIndentationGuides(line, contentWidth, theme) {
+    // Calculate the visible width of the line (excluding ANSI codes)
+    const visibleWidth = getTextWidth(line);
+    // If the line is already at full width, return as-is
+    if (visibleWidth >= contentWidth) {
+        return line;
+    }
+    // Add padding with indentation guides
+    let padding = '';
+    for (let i = visibleWidth; i < contentWidth; i++) {
+        if ((i + 1) % 4 === 0) { // +1 because positions are 1-indexed in the content area
+            padding += theme.current.gray + '│' + '\x1b[39m';
+        }
+        else {
+            padding += ' ';
+        }
+    }
+    return line + padding;
 }
 /**
 * Create a language badge for the top-right corner

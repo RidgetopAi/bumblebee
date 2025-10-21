@@ -240,9 +240,7 @@ function renderBlockquote(node: Blockquote, terminalWidth: number, theme: Bumble
   return borderedLines.join('\n');
 }
 
-/**
- * Render a table (unstyled, basic layout).
- */
+
 function renderTable(node: Table, terminalWidth: number, theme: BumblebeeTheme): string {
   if (!node.children.length) return '';
 

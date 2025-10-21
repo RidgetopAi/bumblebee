@@ -211,9 +211,6 @@ function renderBlockquote(node, terminalWidth, theme, useBlessedTags) {
     });
     return borderedLines.join('\n');
 }
-/**
- * Render a table (unstyled, basic layout).
- */
 function renderTable(node, terminalWidth, theme) {
     if (!node.children.length)
         return '';
