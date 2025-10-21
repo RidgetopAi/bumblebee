@@ -57,8 +57,19 @@ export async function restoreTui(state: TuiRestoreState): Promise<{ screen: any,
 
   // Restore preview content
   const width = process.stdout.columns || 80;
-  const rendered = render(markdownContent, width, currentTheme, true);
-  layout.preview.content = rendered;
+  const rendered = await render(markdownContent, width, currentTheme, true);
+  
+  // Apply render result (same logic as app.ts applyRenderResult)
+  if (typeof rendered === 'string') {
+    layout.preview.content = rendered;
+  } else {
+    layout.preview.content = rendered.textContent;
+    // Append widgets
+    for (const widgetPlacement of rendered.widgets) {
+      widgetPlacement.widget.top = widgetPlacement.startLine;
+      layout.preview.append(widgetPlacement.widget);
+    }
+  }
 
   // Update status bar with current file path
   layout.statusBar.content = currentFilePath;

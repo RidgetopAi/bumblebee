@@ -146,18 +146,12 @@ export async function runApp(config, fileOrDir, stdout) {
     let currentFilePath = fileOrDir;
     // Helper function to apply render result to preview pane
     function applyRenderResult(result, previewPane) {
-        console.error(`[DEBUG applyRenderResult] result type: ${typeof result}`);
-        console.error(`[DEBUG applyRenderResult] previewPane is preview: ${previewPane === layout.preview}`);
-        console.error(`[DEBUG applyRenderResult] previewPane is explorer: ${previewPane === layout.explorer}`);
         if (typeof result === 'string') {
             // Stdout mode or simple content
-            console.error(`[DEBUG applyRenderResult] Setting string content, length: ${result.length}`);
             previewPane.content = result;
         }
         else {
             // TUI mode with widgets
-            console.error(`[DEBUG applyRenderResult] Setting textContent, length: ${result.textContent.length}`);
-            console.error(`[DEBUG applyRenderResult] Widgets count: ${result.widgets.length}`);
             previewPane.content = result.textContent;
             // Clear existing widget children (except the built-in ones)
             const childrenToRemove = previewPane.children.filter((child) => child !== previewPane._label && child !== previewPane._border);
@@ -227,13 +221,8 @@ export async function runApp(config, fileOrDir, stdout) {
             layout.statusBar.content = filePath;
             // Render at current terminal width
             const width = process.stdout.columns || 80;
-            console.error(`[DEBUG] Opening file: ${filePath}`);
-            console.error(`[DEBUG] Rendering to: ${layout.preview !== layout.explorer ? 'preview' : 'WRONG-explorer'}`);
-            console.error(`[DEBUG] About to call render(), width=${width}`);
             const renderResult = await render(markdownContent, width, currentTheme, true);
-            console.error(`[DEBUG] Render completed, about to apply result`);
             applyRenderResult(renderResult, layout.preview);
-            console.error(`[DEBUG] applyRenderResult completed`);
             // Reset preview scroll position
             layout.preview.scrollTo(0);
             screen.render();
