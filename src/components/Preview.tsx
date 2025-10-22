@@ -1,11 +1,14 @@
 import React, { useMemo } from 'react';
 import { Box, Text, useStdout } from 'ink';
+import { bumblebeeTheme } from '../config/theme-bumblebee.js';
 
 /**
  * Preview Component - Scrollable preview pane for Bumblebee TUI
  *
  * Displays rendered ANSI content with scrolling support.
  * Shows a window of content based on scrollOffset prop.
+ *
+ * Border: yellowA (#F2D638, preview pane border)
  */
 interface PreviewProps {
   content: string;
@@ -29,7 +32,12 @@ export function Preview({ content, scrollOffset }: PreviewProps) {
   }, [lines, scrollOffset, availableHeight]);
 
   return (
-    <Box flexDirection="column" height={availableHeight}>
+    <Box
+      flexDirection="column"
+      height={availableHeight}
+      borderStyle="single"
+      borderColor={bumblebeeTheme.current.yellowA}
+    >
       <Text>
         {visibleContent}
       </Text>

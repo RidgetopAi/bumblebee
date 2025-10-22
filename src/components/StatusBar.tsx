@@ -1,12 +1,13 @@
 import React from 'react';
 import { Box, Text } from 'ink';
+import { bumblebeeTheme } from '../config/theme-bumblebee.js';
 
 /**
  * StatusBar Component - Bottom status bar for Bumblebee TUI
  *
  * Props-based component that displays current file path and mode indicator.
  *
- * Border: #E9B033 (yellow B, status/bottom border)
+ * Border: yellowB (#E9B033, status/bottom border)
  */
 interface StatusBarProps {
   filePath: string;
@@ -18,7 +19,7 @@ export function StatusBar({ filePath, mode }: StatusBarProps) {
     <Box
       width="100%"
       borderStyle="single"
-      borderColor="#E9B033"
+      borderColor={bumblebeeTheme.current.yellowB}
       paddingX={1}
       justifyContent="space-between"
     >
