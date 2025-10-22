@@ -12,6 +12,8 @@ export interface AppState {
   currentFile: string | null;
   /** Rendered content (ANSI string) */
   content: string;
+  /** Current scroll offset for preview */
+  scrollOffset: number;
 }
 
 /**
@@ -22,6 +24,7 @@ const initialState: AppState = {
   focusedPane: 'preview',
   currentFile: null,
   content: '',
+  scrollOffset: 0,
 };
 
 /**
@@ -66,6 +69,13 @@ export function useAppState() {
   };
 
   /**
+   * Set the scroll offset
+   */
+  const setScrollOffset = (offset: number) => {
+    setState(prev => ({ ...prev, scrollOffset: offset }));
+  };
+
+  /**
    * Set focused pane
    */
   const setFocusedPane = (pane: 'preview' | 'explorer') => {
@@ -86,6 +96,7 @@ export function useAppState() {
     enterEditMode,
     setCurrentFile,
     setContent,
+    setScrollOffset,
     setFocusedPane,
     updateState,
   };

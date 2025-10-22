@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, useInput, useApp as useInkApp } from 'ink';
+import { Box, useInput, useApp as useInkApp, useStdout } from 'ink';
 import { TitleBar } from './components/TitleBar.js';
 import { StatusBar } from './components/StatusBar.js';
 import { Preview } from './components/Preview.js';
@@ -16,7 +16,8 @@ import { bumblebeeTheme } from './config/theme-bumblebee.js';
  */
 export function App() {
   const { exit } = useInkApp();
-  const { state, setCurrentFile, setContent } = useAppState();
+  const { stdout } = useStdout();
+  const { state, setCurrentFile, setContent, setScrollOffset } = useAppState();
 
   // Load sample content on mount
   useEffect(() => {
@@ -50,6 +51,7 @@ Enjoy using Bumblebee! 🎯
       // Render the markdown
       const rendered = await render(sampleMarkdown, 80, bumblebeeTheme);
       setContent(rendered);
+      setScrollOffset(0);
       setCurrentFile('sample.md');
     };
 
@@ -61,12 +63,25 @@ Enjoy using Bumblebee! 🎯
     if (input === 'q' || key.escape) {
       exit();
     }
+
+    // Calculate scrolling parameters
+    const availableHeight = stdout?.rows ? stdout.rows - 2 : 20;
+    const lines = state.content.split('\n');
+    const maxScroll = Math.max(0, lines.length - availableHeight);
+
+    // Handle scrolling
+    if (key.upArrow || input === 'k') {
+      setScrollOffset(Math.max(0, state.scrollOffset - 1));
+    }
+    if (key.downArrow || input === 'j') {
+      setScrollOffset(Math.min(maxScroll, state.scrollOffset + 1));
+    }
   });
 
   return (
     <Box flexDirection="column" height="100%">
       <TitleBar />
-      <Preview content={state.content} scrollOffset={0} />
+      <Preview content={state.content} scrollOffset={state.scrollOffset} />
       <StatusBar filePath={state.currentFile || 'No file'} mode={state.mode} />
     </Box>
   );
