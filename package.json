@@ -30,9 +30,15 @@
   "homepage": "https://github.com/RidgetopAi/bumblebee#readme",
   "dependencies": {
     "chalk": "^5.6.2",
+    "chokidar": "^4.0.3",
     "cli-highlight": "^2.1.11",
+    "clipboardy": "^5.0.0",
     "commander": "^14.0.1",
     "gray-matter": "^4.0.3",
+    "ink": "^6.3.1",
+    "ink-spinner": "^5.0.0",
+    "ink-text-input": "^6.0.0",
+    "react": "^19.2.0",
     "remark-gfm": "^4.0.1",
     "remark-parse": "^11.0.0",
     "shiki": "^3.13.0",
@@ -42,6 +48,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.8.1",
+    "@types/react": "^19.2.2",
     "tsx": "^4.19.2",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"

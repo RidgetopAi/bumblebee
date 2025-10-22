@@ -132,7 +132,7 @@ export const KEYMAP = {
   renderMode: "r",
   editMode: "i",
   normalMode: "escape",
-  toggleExplorer: "ctrl+e",
+  toggleExplorer: "space+e",
   quit: "q",
   visual: "v",
   yank: "y",
@@ -179,6 +179,7 @@ export const KEYMAP = {
 **Status:** ✅ Complete - stdout mode works perfectly
 
 **What Works:**
+
 - GFM parsing (tables, code blocks, lists)
 - Shiki syntax highlighting with github-dark theme
 - Text wrapping and ANSI color output
@@ -189,6 +190,7 @@ export const KEYMAP = {
 ## Phase 2 – Ink TUI Shell & Components (NEW)
 
 **Why Ink?**
+
 - React patterns = massive LLM training data
 - Proper hooks for state management (`useState`, `useReducer`)
 - Clear component boundaries and props contracts
@@ -199,6 +201,7 @@ export const KEYMAP = {
 **Tasks**
 
 1. Install Ink dependencies:
+
    ```bash
    npm install ink react ink-spinner ink-text-input
    ```
@@ -603,6 +606,7 @@ export const KEYMAP = {
 ---
 
 **Execution Note for Smaller LLMs:**
+
 - Each phase includes explicit "Show work" requirements for verification
 - Rollback criteria define when to stop and fix issues before proceeding
 - Test with fixtures at each stage; document findings
