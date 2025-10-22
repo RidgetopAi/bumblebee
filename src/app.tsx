@@ -58,6 +58,17 @@ Enjoy using Bumblebee! 🎯
     loadContent();
   }, [setContent, setCurrentFile]);
 
+  // Handle resize: clamp scroll offset to valid bounds when terminal height changes
+  useEffect(() => {
+    const availableHeight = stdout?.rows ? stdout.rows - 2 : 20;
+    const lines = state.content.split('\n');
+    const maxScroll = Math.max(0, lines.length - availableHeight);
+    const clampedOffset = Math.min(state.scrollOffset, maxScroll);
+    if (clampedOffset !== state.scrollOffset) {
+      setScrollOffset(Math.max(0, clampedOffset));
+    }
+  }, [stdout?.rows, state.content, state.scrollOffset, setScrollOffset]);
+
   // Handle keyboard input
   useInput((input, key) => {
     if (input === 'q' || key.escape) {

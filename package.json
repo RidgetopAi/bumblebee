@@ -4,10 +4,10 @@
   "description": "CLI Markdown Viewer & Editor - Neovim-style terminal application (Ink + React)",
   "type": "module",
   "scripts": {
-  "dev": "tsx src/cli.tsx",
-  "build": "npx tsc && chmod +x dist/cli.js",
-  "test": "vitest",
-  "stdout": "tsx src/cli.tsx --stdout"
+    "dev": "tsx src/cli.tsx",
+    "build": "npx tsc && chmod +x dist/cli.js",
+    "test": "vitest",
+    "stdout": "tsx src/cli.tsx --stdout"
   },
   "repository": {
     "type": "git",
@@ -49,6 +49,7 @@
   "devDependencies": {
     "@types/node": "^24.8.1",
     "@types/react": "^19.2.2",
+    "ink-testing-library": "^4.0.0",
     "tsx": "^4.19.2",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
