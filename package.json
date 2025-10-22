@@ -1,14 +1,13 @@
 {
   "name": "bumblebee",
   "version": "1.0.0",
-  "description": "CLI Markdown Viewer & Editor - Neovim-style terminal application",
+  "description": "CLI Markdown Viewer & Editor - Neovim-style terminal application (Ink + React)",
   "type": "module",
   "scripts": {
-    "dev": "bun run src/cli.ts",
-    "build": "bun build --target bun --outdir dist src/cli.ts",
-    "dev:node": "node src/cli.ts",
-    "build:node": "npx tsc && chmod +x dist/cli.js",
-    "test": "vitest"
+    "dev": "node --loader tsx src/cli.ts",
+    "build": "npx tsc && chmod +x dist/cli.js",
+    "test": "vitest",
+    "stdout": "node --loader tsx src/cli.ts --stdout"
   },
   "repository": {
     "type": "git",
@@ -19,7 +18,9 @@
     "cli",
     "viewer",
     "editor",
-    "terminal"
+    "terminal",
+    "ink",
+    "react"
   ],
   "author": "",
   "license": "ISC",
@@ -29,26 +30,23 @@
   "homepage": "https://github.com/RidgetopAi/bumblebee#readme",
   "dependencies": {
     "chalk": "^5.6.2",
-    "chokidar": "^4.0.3",
     "cli-highlight": "^2.1.11",
-    "cli-truncate": "^5.1.0",
-    "clipboardy": "^5.0.0",
     "commander": "^14.0.1",
     "gray-matter": "^4.0.3",
-    "neo-blessed": "^0.2.0",
     "remark-gfm": "^4.0.1",
     "remark-parse": "^11.0.0",
-    "sharp": "^0.34.4",
     "shiki": "^3.13.0",
     "string-width": "^8.1.0",
     "strip-ansi": "^7.1.2",
-    "table": "^6.9.0",
     "wrap-ansi": "^9.0.2"
   },
   "devDependencies": {
-    "@types/blessed": "^0.1.25",
     "@types/node": "^24.8.1",
+    "tsx": "^4.19.2",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
+  },
+  "comments": {
+    "phase2-dependencies": "Phase 2 will add: ink, react, ink-spinner, ink-text-input, clipboardy, chokidar"
   }
 }
