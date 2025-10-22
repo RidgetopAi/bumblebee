@@ -1,8 +1,14 @@
 #!/usr/bin/env node
 
+import React from 'react';
 import { Command } from 'commander';
+import { render } from 'ink';
 import { loadConfig } from './config/loadConfig.js';
-import { runApp } from './app.js';
+import { App } from './app.js';
+import { parseMd } from './parser/mdToAst.js';
+import { render as renderMd } from './render/mdastToAnsi.js';
+import { bumblebeeTheme } from './config/theme-bumblebee.js';
+import fs from 'fs';
 
 const program = new Command();
 
@@ -24,8 +30,24 @@ program
         config.trueColor = 'off';
       }
 
-      // Run the application
-      await runApp(config, fileOrDir, options.stdout);
+      if (options.stdout) {
+        // Stdout mode: render markdown to terminal
+        let markdown: string;
+
+        try {
+          // Try to read file
+          markdown = fs.readFileSync(fileOrDir, 'utf-8');
+        } catch (error) {
+          // If not a file, use as literal markdown
+          markdown = fileOrDir;
+        }
+
+        const output = await renderMd(markdown, process.stdout.columns || 80, bumblebeeTheme);
+        console.log(output);
+      } else {
+        // TUI mode: render Ink application
+        render(<App />);
+      }
     } catch (error) {
       console.error('Error:', (error as Error).message);
       process.exit(1);

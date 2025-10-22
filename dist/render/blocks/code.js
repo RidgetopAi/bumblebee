@@ -400,7 +400,7 @@ function renderCodeWithCliHighlight(code, lang) {
  * @param theme - Bumblebee theme with color palette
  * @returns Formatted ANSI string ready for terminal display
  */
-export async function renderCodeBlock(node, terminalWidth, theme, useBlessedTags) {
+export async function renderCodeBlock(node, terminalWidth, theme) {
     const endProfile = PerformanceProfiler.start('render-code-block');
     const code = node.value;
     let lang = node.lang || '';
@@ -421,36 +421,29 @@ export async function renderCodeBlock(node, terminalWidth, theme, useBlessedTags
     }
     // Get syntax-highlighted code or plain text
     let highlightedCode;
-    if (useBlessedTags) {
-        // TUI mode: Use plain text to avoid mixing ANSI codes with blessed tags
-        // Blessed parser can't handle mixed ANSI escape sequences and blessed tag syntax
-        highlightedCode = code;
+    // Use full syntax highlighting with ANSI codes
+    try {
+        // Try Shiki first (best quality highlighting)
+        if (lang) {
+            highlightedCode = await codeToAnsi(code, lang, 'truecolor');
+        }
+        else {
+            highlightedCode = code;
+        }
     }
-    else {
-        // Stdout mode: Use full syntax highlighting with ANSI codes
+    catch (error) {
+        // Shiki failed, try cli-highlight as intermediate fallback
         try {
-            // Try Shiki first (best quality highlighting)
             if (lang) {
-                highlightedCode = await codeToAnsi(code, lang, 'truecolor');
+                highlightedCode = renderCodeWithCliHighlight(code, lang);
             }
             else {
                 highlightedCode = code;
             }
         }
-        catch (error) {
-            // Shiki failed, try cli-highlight as intermediate fallback
-            try {
-                if (lang) {
-                    highlightedCode = renderCodeWithCliHighlight(code, lang);
-                }
-                else {
-                    highlightedCode = code;
-                }
-            }
-            catch (fallbackError) {
-                // Both highlighting methods failed, use plain text
-                highlightedCode = code;
-            }
+        catch (fallbackError) {
+            // Both highlighting methods failed, use plain text
+            highlightedCode = code;
         }
     }
     // Split code into lines
@@ -464,50 +457,27 @@ export async function renderCodeBlock(node, terminalWidth, theme, useBlessedTags
     // Create content lines with borders and padding
     const contentLines = wrappedLines.map((line, index) => {
         // Add padding to fill content area
-        const paddedLine = addPadding(line, contentWidth, theme, useBlessedTags);
-        if (useBlessedTags) {
-            // TUI mode: No side borders (blessed pane already has borders)
-            // Just add padding and content
-            return '  ' + paddedLine + '  ';
-        }
-        else {
-            // Stdout mode: Full borders with │ on each side
-            const leftBorder = theme.current.yellowA + '│' + '\x1b[39m';
-            const rightBorder = theme.current.yellowA + '│' + '\x1b[39m';
-            const padding = ' ';
-            return leftBorder + padding + paddedLine + padding + rightBorder;
-        }
+        const paddedLine = addPadding(line, contentWidth, theme);
+        // Full borders with │ on each side
+        const leftBorder = theme.current.yellowA + '│' + '\x1b[39m';
+        const rightBorder = theme.current.yellowA + '│' + '\x1b[39m';
+        const padding = ' ';
+        return leftBorder + padding + paddedLine + padding + rightBorder;
     });
     // Create top border with language badge if specified
     let topBorder;
-    if (useBlessedTags) {
-        // TUI mode: Simple approach - just add badge at end
-        if (lang) {
-            const badge = createLanguageBadge(lang, theme, useBlessedTags);
-            const badgeWidth = getTextWidth(lang) + 4; // ┤ Lang ├
-            const beforeBadge = '─'.repeat(terminalWidth - badgeWidth - 2);
-            topBorder = '{yellow-fg}' + beforeBadge + badge + '{/yellow-fg}';
-        }
-        else {
-            topBorder = '{yellow-fg}' + '─'.repeat(terminalWidth - 2) + '{/yellow-fg}';
-        }
-    }
-    else {
-        // Stdout mode: Use substring overlay
-        topBorder = theme.current.yellowA + '─'.repeat(terminalWidth - 2) + '\x1b[39m';
-        if (lang) {
-            const badge = createLanguageBadge(lang, theme, useBlessedTags);
-            const badgeWidth = getTextWidth(lang) + 4; // ┤ Lang ├
-            const badgeStartPos = terminalWidth - badgeWidth - 1;
-            const beforeBadge = topBorder.substring(0, badgeStartPos);
-            const afterBadge = topBorder.substring(badgeStartPos + badgeWidth);
-            topBorder = beforeBadge + badge + afterBadge;
-        }
+    // Use substring overlay
+    topBorder = theme.current.yellowA + '─'.repeat(terminalWidth - 2) + '\x1b[39m';
+    if (lang) {
+        const badge = createLanguageBadge(lang, theme);
+        const badgeWidth = getTextWidth(lang) + 4; // ┤ Lang ├
+        const badgeStartPos = terminalWidth - badgeWidth - 1;
+        const beforeBadge = topBorder.substring(0, badgeStartPos);
+        const afterBadge = topBorder.substring(badgeStartPos + badgeWidth);
+        topBorder = beforeBadge + badge + afterBadge;
     }
     // Create bottom border (same as plain top border)
-    const bottomBorder = useBlessedTags
-        ? '{yellow-fg}' + '─'.repeat(terminalWidth - 2) + '{/yellow-fg}'
-        : theme.current.yellowA + '─'.repeat(terminalWidth - 2) + '\x1b[39m';
+    const bottomBorder = theme.current.yellowA + '─'.repeat(terminalWidth - 2) + '\x1b[39m';
     // Combine all lines
     const result = [topBorder, ...contentLines, bottomBorder].join('\n');
     // Cache the result
@@ -548,7 +518,7 @@ function renderPlainCodeBlock(code, lang, terminalWidth, theme) {
     // Create content lines with borders and padding
     const contentLines = wrappedLines.map((line, index) => {
         // Add padding to fill content area
-        const paddedLine = addPadding(line, contentWidth, theme, false);
+        const paddedLine = addPadding(line, contentWidth, theme);
         // Create the full line: │ padding content padding │
         const leftBorder = theme.current.yellowA + '│' + '\x1b[39m';
         const rightBorder = theme.current.yellowA + '│' + '\x1b[39m';
@@ -558,7 +528,7 @@ function renderPlainCodeBlock(code, lang, terminalWidth, theme) {
     // Add language badge to top-right if language is specified
     let finalLines = contentLines;
     if (lang) {
-        const badge = createLanguageBadge(lang, theme, false);
+        const badge = createLanguageBadge(lang, theme);
         // Overlay badge on the top border line
         if (finalLines.length > 0) {
             const topLine = finalLines[0];
@@ -588,7 +558,7 @@ function wrapCodeLine(line, maxWidth) {
 /**
 * Add padding to code lines to fill the content area
 */
-function addPadding(line, contentWidth, theme, useBlessedTags) {
+function addPadding(line, contentWidth, theme) {
     // Calculate the visible width of the line (excluding ANSI codes)
     const visibleWidth = getTextWidth(line);
     // If the line is already at full width, return as-is
@@ -603,14 +573,9 @@ function addPadding(line, contentWidth, theme, useBlessedTags) {
 * Create a language badge for the top-right corner
 * Per spec: badge text #010600 (nearBlack), subtle background
  */
-function createLanguageBadge(lang, theme, useBlessedTags) {
+function createLanguageBadge(lang, theme) {
     // Use nearBlack text with subtle background (yellow border shows through)
-    if (useBlessedTags) {
-        return `{#010600-fg}┤ ${lang} ├{/#010600-fg}`;
-    }
-    else {
-        const textColor = '\x1b[38;2;1;6;0m'; // nearBlack text
-        const reset = '\x1b[39m';
-        return `${textColor}┤ ${lang} ├${reset}`;
-    }
+    const textColor = '\x1b[38;2;1;6;0m'; // nearBlack text
+    const reset = '\x1b[39m';
+    return `${textColor}┤ ${lang} ├${reset}`;
 }

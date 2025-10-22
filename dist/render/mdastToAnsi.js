@@ -2,94 +2,45 @@ import { parseMd } from '../parser/mdToAst.js';
 import { wrapText } from './ansi/wrap.js';
 import { getTextWidth } from './ansi/width.js';
 import { renderCodeBlock } from './blocks/code.js';
-import { createCodeBlockWidget } from '../tui/components/codeBlock.js';
 /**
- * Render markdown content to ANSI-formatted terminal output or blessed tags/widgets.
+ * Render markdown content to ANSI-formatted terminal output.
  *
  * Takes markdown string, parses it to MDAST, and renders each node type
  * with appropriate ANSI formatting, colors, and text wrapping.
  *
- * In stdout mode: returns formatted string
- * In TUI mode: returns object with text content and widget placements
- *
  * @param markdown - Raw markdown string to render
  * @param width - Terminal width in columns for text wrapping
  * @param theme - Bumblebee theme with color palette and utilities
- * @param useBlessedTags - Use blessed tags/widgets instead of ANSI codes
- * @returns RenderResult: string for stdout, object with widgets for TUI
+ * @returns RenderResult: ANSI-formatted string
  *
  * @example
  * ```typescript
  * import { bumblebeeTheme } from '../config/theme-bumblebee.js';
- * const output = await render('# Hello World\n\nThis is a paragraph.', 80, bumblebeeTheme, false);
- * if (typeof output === 'string') {
- *   console.log(output); // ANSI-formatted output
- * } else {
- *   // Handle TUI widgets
- * }
+ * const output = await render('# Hello World\n\nThis is a paragraph.', 80, bumblebeeTheme);
+ * console.log(output); // ANSI-formatted output
  * ```
  */
-export async function render(markdown, width, theme, useBlessedTags = false) {
+export async function render(markdown, width, theme) {
     const ast = parseMd(markdown);
-    return await renderRoot(ast, width, theme, useBlessedTags);
+    return await renderRoot(ast, width, theme);
 }
 /**
  * Render the root document node by joining all child nodes with newlines.
  */
-async function renderRoot(node, terminalWidth, theme, useBlessedTags) {
-    if (!useBlessedTags) {
-        // Stdout mode: simple string concatenation
-        const children = await Promise.all(node.children.map(child => renderNode(child, terminalWidth, theme, useBlessedTags)));
-        return children.join('\n\n');
-    }
-    // TUI mode: collect text and widgets separately
-    const results = await Promise.all(node.children.map(child => renderNode(child, terminalWidth, theme, useBlessedTags)));
-    let textContent = '';
-    const allWidgets = [];
-    let currentLine = 0;
-    for (const result of results) {
-        if (typeof result === 'string') {
-            // Regular text content
-            if (textContent)
-                textContent += '\n\n';
-            textContent += result;
-            currentLine += result.split('\n').length + 2; // +2 for the \n\n separator
-        }
-        else {
-            // Widget content
-            if (textContent)
-                textContent += '\n\n';
-            // Add blank lines for widget space
-            const maxWidgetHeight = Math.max(...result.widgets.map(w => w.lineCount));
-            const blankLines = '\n'.repeat(maxWidgetHeight);
-            textContent += blankLines;
-            // Adjust widget line positions and add to collection
-            for (const widget of result.widgets) {
-                allWidgets.push({
-                    widget: widget.widget,
-                    startLine: currentLine + widget.startLine,
-                    lineCount: widget.lineCount
-                });
-            }
-            // Advance past the widget space
-            currentLine += maxWidgetHeight + 2;
-        }
-    }
-    return {
-        textContent: textContent.replace(/\n\n$/, ''), // Remove trailing separator
-        widgets: allWidgets
-    };
+async function renderRoot(node, terminalWidth, theme) {
+    const children = await Promise.all(node.children.map(child => renderNode(child, terminalWidth, theme)));
+    return children.join('\n\n');
 }
 /**
- * Render a single MDAST node to ANSI-formatted string or widget object.
+ * Render a single MDAST node to ANSI-formatted string.
  * Dispatches to specific handler functions based on node type.
  */
-async function renderNode(node, terminalWidth, theme, useBlessedTags) {
+async function renderNode(node, terminalWidth, theme) {
     switch (node.type) {
         case 'paragraph':
             return renderParagraph(node, terminalWidth, theme);
         case 'heading':
-            return renderHeading(node, terminalWidth, theme, useBlessedTags);
+            return renderHeading(node, terminalWidth, theme);
         case 'text':
             return renderText(node);
         case 'emphasis':
@@ -99,25 +50,18 @@ async function renderNode(node, terminalWidth, theme, useBlessedTags) {
         case 'link':
             return renderLink(node, theme);
         case 'list':
-            return await renderList(node, terminalWidth, theme, useBlessedTags);
+            return await renderList(node, terminalWidth, theme);
         case 'listItem':
-            return await renderListItem(node, terminalWidth, theme, useBlessedTags);
+            return await renderListItem(node, terminalWidth, theme);
         case 'blockquote':
-            return await renderBlockquote(node, terminalWidth, theme, useBlessedTags);
+            return await renderBlockquote(node, terminalWidth, theme);
         case 'code':
-            if (useBlessedTags) {
-                // TUI mode: create widget instead of string
-                return await renderCodeBlockWidget(node, terminalWidth, theme);
-            }
-            else {
-                // Stdout mode: render as string
-                return await renderCodeBlock(node, terminalWidth, theme, useBlessedTags);
-            }
+            return await renderCodeBlock(node, terminalWidth, theme);
         case 'table':
             return renderTable(node, terminalWidth, theme);
         default:
             // Fallback for unknown node types
-            return await renderUnknown(node, terminalWidth, theme, useBlessedTags);
+            return await renderUnknown(node, terminalWidth, theme);
     }
 }
 /**
@@ -137,47 +81,27 @@ function renderParagraph(node, terminalWidth, theme) {
  * - H4: yellowB (no bold)
  * - H5-H6: gray (subtle)
  */
-function renderHeading(node, terminalWidth, theme, useBlessedTags) {
+function renderHeading(node, terminalWidth, theme) {
     const level = node.depth;
     const text = collectText(node);
-    if (useBlessedTags) {
-        // Use blessed tags for TUI mode
-        switch (level) {
-            case 1:
-                return '{bold}{underline}{yellow-fg}' + text + '{/yellow-fg}{/underline}{/bold}';
-            case 2:
-                return '{bold}{yellow-fg}' + text + '{/yellow-fg}{/bold}';
-            case 3:
-                return '{bold}{yellow-fg}' + text + '{/yellow-fg}{/bold}';
-            case 4:
-                return '{yellow-fg}' + text + '{/yellow-fg}';
-            case 5:
-            case 6:
-            default:
-                return '{#8E8F95-fg}' + text + '{/#8E8F95-fg}';
-        }
-    }
-    else {
-        // Use ANSI codes for stdout mode
-        switch (level) {
-            case 1:
-                // Bold + Underline + yellowA
-                return '\x1b[1m\x1b[4m' + theme.current.yellowA + text + '\x1b[39m\x1b[24m\x1b[22m';
-            case 2:
-                // Bold + yellowA
-                return '\x1b[1m' + theme.current.yellowA + text + '\x1b[39m\x1b[22m';
-            case 3:
-                // Bold + yellowB
-                return '\x1b[1m' + theme.current.yellowB + text + '\x1b[39m\x1b[22m';
-            case 4:
-                // yellowB (no bold)
-                return theme.current.yellowB + text + '\x1b[39m';
-            case 5:
-            case 6:
-            default:
-                // gray (subtle)
-                return theme.current.gray + text + '\x1b[39m';
-        }
+    switch (level) {
+        case 1:
+            // Bold + Underline + yellowA
+            return '\x1b[1m\x1b[4m' + theme.current.yellowA + text + '\x1b[39m\x1b[24m\x1b[22m';
+        case 2:
+            // Bold + yellowA
+            return '\x1b[1m' + theme.current.yellowA + text + '\x1b[39m\x1b[22m';
+        case 3:
+            // Bold + yellowB
+            return '\x1b[1m' + theme.current.yellowB + text + '\x1b[39m\x1b[22m';
+        case 4:
+            // yellowB (no bold)
+            return theme.current.yellowB + text + '\x1b[39m';
+        case 5:
+        case 6:
+        default:
+            // gray (subtle)
+            return theme.current.gray + text + '\x1b[39m';
     }
 }
 /**
@@ -216,27 +140,27 @@ function renderLink(node, theme) {
 /**
  * Render a list (ordered or unordered).
  */
-async function renderList(node, terminalWidth, theme, useBlessedTags) {
+async function renderList(node, terminalWidth, theme) {
     const isOrdered = node.ordered;
     const start = node.start || 1;
     const items = await Promise.all(node.children.map(async (item, index) => {
         const bullet = isOrdered ? `${start + index}.` : '•';
-        return await renderListItemWithBullet(item, bullet, terminalWidth, theme, useBlessedTags);
+        return await renderListItemWithBullet(item, bullet, terminalWidth, theme);
     }));
     return items.join('\n');
 }
 /**
  * Render a list item with bullet/number prefix and indentation.
  */
-async function renderListItem(node, terminalWidth, theme, useBlessedTags) {
+async function renderListItem(node, terminalWidth, theme) {
     // This is called for nested list items, use a simple bullet
-    return await renderListItemWithBullet(node, '•', terminalWidth, theme, useBlessedTags);
+    return await renderListItemWithBullet(node, '•', terminalWidth, theme);
 }
 /**
  * Helper to render a list item with a specific bullet prefix.
  */
-async function renderListItemWithBullet(node, bullet, terminalWidth, theme, useBlessedTags) {
-    const renderedChildren = await Promise.all(node.children.map(child => renderNode(child, terminalWidth - 2, theme, useBlessedTags)));
+async function renderListItemWithBullet(node, bullet, terminalWidth, theme) {
+    const renderedChildren = await Promise.all(node.children.map(child => renderNode(child, terminalWidth - 2, theme)));
     const content = renderedChildren.join('\n');
     const lines = content.split('\n');
     const indentedLines = lines.map((line, index) => {
@@ -252,8 +176,8 @@ async function renderListItemWithBullet(node, bullet, terminalWidth, theme, useB
 /**
  * Render a blockquote with left border bar and gray color.
  */
-async function renderBlockquote(node, terminalWidth, theme, useBlessedTags) {
-    const renderedChildren = await Promise.all(node.children.map(child => renderNode(child, terminalWidth - 2, theme, useBlessedTags)));
+async function renderBlockquote(node, terminalWidth, theme) {
+    const renderedChildren = await Promise.all(node.children.map(child => renderNode(child, terminalWidth - 2, theme)));
     const content = renderedChildren.join('\n\n');
     const lines = content.split('\n');
     const borderedLines = lines.map(line => {
@@ -328,10 +252,10 @@ function calculateColumnWidths(rows, maxTotalWidth) {
 /**
  * Fallback renderer for unknown node types.
  */
-async function renderUnknown(node, terminalWidth, theme, useBlessedTags) {
+async function renderUnknown(node, terminalWidth, theme) {
     // Try to render children if they exist
     if ('children' in node && Array.isArray(node.children)) {
-        const children = await Promise.all(node.children.map((child) => renderNode(child, terminalWidth, theme, useBlessedTags)));
+        const children = await Promise.all(node.children.map((child) => renderNode(child, terminalWidth, theme)));
         return children.join('');
     }
     // Fallback to empty string
@@ -355,21 +279,3 @@ function collectText(node) {
  * Render a code block as a blessed widget for TUI mode.
  * Creates a widget object and returns it with positioning information.
  */
-async function renderCodeBlockWidget(node, terminalWidth, theme) {
-    const code = node.value;
-    const lang = node.lang || '';
-    // Create the blessed widget
-    const widget = createCodeBlockWidget(code, lang, terminalWidth);
-    // Calculate how many lines this widget will occupy
-    // Widget uses 'shrink' height, so we need to estimate based on content
-    const lines = code.split('\n');
-    const lineCount = Math.max(lines.length + 2, 3); // +2 for borders, minimum 3 lines
-    return {
-        textContent: '', // Widget replaces text content
-        widgets: [{
-                widget,
-                startLine: 0, // Widget starts at current position
-                lineCount
-            }]
-    };
-}
