@@ -18,8 +18,10 @@ interface PreviewProps {
 export function Preview({ content, scrollOffset }: PreviewProps) {
   const { stdout } = useStdout();
 
-  // Calculate available height (terminal rows minus title and status bars)
-  const availableHeight = stdout?.rows ? stdout.rows - 2 : 20;
+  // Calculate available height (terminal rows minus title bar, status bar, and preview borders)
+  // TitleBar: 1 row, StatusBar (with borders): 3 rows, Preview border (top+bottom): 2 rows = 6 total
+  // Empirically verified: -5 positions content correctly (user feedback: -4 was 1 line too high)
+  const availableHeight = stdout?.rows ? stdout.rows - 5 : 20;
 
   // Split content into lines
   const lines = useMemo(() => content.split('\n'), [content]);
