@@ -38,7 +38,10 @@ export function Explorer({
     <Box flexDirection="column" height="100%">
       {items.map((item, index) => {
         const isSelected = index === selectedIndex;
-        const icon = item.type === 'directory' ? '📁' : '📄';
+        let icon = item.type === 'directory' ? '📁' : '📄';
+        if (item.name === '..') {
+          icon = '⬆️';
+        }
 
         return (
           <Box key={item.path} paddingX={1}>

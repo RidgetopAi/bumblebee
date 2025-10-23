@@ -98,41 +98,25 @@ export function useExplorer() {
   };
 
   /**
-   * Handle Enter key press on selected item
-   */
+  * Handle Enter key press on selected item
+  */
   const handleEnter = (): { action: 'file' | 'directory' | 'none'; path: string } => {
-    if (!state.fileTree) return { action: 'none', path: '' };
+  if (!state.fileTree) return { action: 'none', path: '' };
 
-    const selectedItem = state.fileTree.items[state.selectedIndex];
-    if (!selectedItem) return { action: 'none', path: '' };
+  const selectedItem = state.fileTree.items[state.selectedIndex];
+  if (!selectedItem) return { action: 'none', path: '' };
 
-    if (selectedItem.type === 'file') {
-      return { action: 'file', path: selectedItem.path };
-    }
+  if (selectedItem.type === 'file') {
+  return { action: 'file', path: selectedItem.path };
+  }
 
-    if (selectedItem.type === 'directory') {
-      // Toggle directory expansion
-      const isExpanded = state.expandedDirs.has(selectedItem.path);
-
-      setState(prev => {
-        const newExpandedDirs = new Set(prev.expandedDirs);
-        if (isExpanded) {
-          newExpandedDirs.delete(selectedItem.path);
-        } else {
-          newExpandedDirs.add(selectedItem.path);
-          // TODO: In future, scan subdirectory and populate children
-        }
-
-        return {
-          ...prev,
-          expandedDirs: newExpandedDirs,
-        };
-      });
-
+  if (selectedItem.type === 'directory') {
+  // Change to the selected directory
+  setRootPath(selectedItem.path);
       return { action: 'directory', path: selectedItem.path };
-    }
+  }
 
-    return { action: 'none', path: '' };
+  return { action: 'none', path: '' };
   };
 
   /**

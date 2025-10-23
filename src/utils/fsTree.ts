@@ -1,5 +1,5 @@
 import { readdirSync, statSync } from 'fs';
-import { resolve, basename } from 'path';
+import { resolve, basename, dirname } from 'path';
 import { loadConfig } from '../config/loadConfig.js';
 
 export interface FileTreeItem {
@@ -63,6 +63,19 @@ export function scanDirectory(path: string, depth: number = 1): FileTree {
           children: undefined, // Not populated for depth=1
         };
       });
+
+    // Add parent directory navigation ("..") if not at filesystem root
+    const parentPath = dirname(absolutePath);
+    if (parentPath !== absolutePath) {
+      const parentItem: FileTreeItem = {
+        name: '..',
+        path: parentPath,
+        type: 'directory',
+        isExpanded: false,
+        children: undefined,
+      };
+      items.unshift(parentItem);
+    }
 
     return {
       root: absolutePath,
