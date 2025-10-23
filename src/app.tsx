@@ -42,7 +42,7 @@ export function App() {
     }
   };
 
-  // Load sample content on mount
+  // Load sample content on mount (only once)
   useEffect(() => {
     const loadContent = async () => {
       const sampleMarkdown = `# Welcome to Bumblebee
@@ -79,7 +79,8 @@ Enjoy using Bumblebee! 🎯
     };
 
     loadContent();
-  }, [setContent, setCurrentFile]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty array = run only on mount, never again
 
   // Handle resize: clamp scroll offset to valid bounds when terminal height changes
   useEffect(() => {
