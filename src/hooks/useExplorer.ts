@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import chokidar, { FSWatcher } from 'chokidar';
 import { scanDirectory, FileTree, FileTreeItem } from '../utils/fsTree.js';
 
 /**
@@ -33,6 +34,7 @@ const initialState: ExplorerState = {
  */
 export function useExplorer() {
   const [state, setState] = useState<ExplorerState>(initialState);
+  const [watcher, setWatcher] = useState<FSWatcher | null>(null);
 
   /**
    * Load the file tree for the current root path
@@ -157,9 +159,48 @@ export function useExplorer() {
     setState(prev => ({ ...prev, ...updates }));
   };
 
-  // Load initial file tree on mount and when rootPath changes
+  // Load file tree and set up file watching on mount and rootPath changes
   useEffect(() => {
+    // Close existing watcher if any
+    if (watcher) {
+      watcher.close();
+    }
+
+    // Create new watcher for current directory
+    const newWatcher = chokidar.watch(state.rootPath, {
+      persistent: true,
+      ignoreInitial: true,
+      depth: 0, // Only watch current directory, not subdirectories
+    });
+
+    // Debounced refresh function (300ms as per spec)
+    let refreshTimeout: NodeJS.Timeout;
+    const debouncedRefresh = () => {
+      clearTimeout(refreshTimeout);
+      refreshTimeout = setTimeout(() => {
+        loadFileTree();
+      }, 300);
+    };
+
+    // Set up event listeners for file system changes
+    newWatcher.on('add', debouncedRefresh);      // File added
+    newWatcher.on('unlink', debouncedRefresh);   // File removed
+    newWatcher.on('addDir', debouncedRefresh);   // Directory added
+    newWatcher.on('unlinkDir', debouncedRefresh); // Directory removed
+
+    // Store the new watcher
+    setWatcher(newWatcher);
+
+    // Initial load of file tree
     loadFileTree();
+
+    // Cleanup function
+    return () => {
+      if (newWatcher) {
+        newWatcher.close();
+      }
+      clearTimeout(refreshTimeout);
+    };
   }, [state.rootPath]);
 
   return {
