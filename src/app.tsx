@@ -118,6 +118,7 @@ Enjoy using Bumblebee! 🎯
         const result = handleEnter();
         if (result.action === 'file') {
           loadFile(result.path);
+          toggleVisibility(); // Hide explorer after file opens (auto-focus preview)
         }
         return;
       }
