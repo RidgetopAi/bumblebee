@@ -47,7 +47,7 @@ export function Explorer({
           <Box key={item.path} paddingX={1}>
             <Text
               color={isSelected ? bumblebeeTheme.current.cyan : undefined}
-              backgroundColor={isSelected ? bumblebeeTheme.current.nearBlack : undefined}
+              inverse={isSelected}
               bold={isSelected}
             >
               {icon} {item.name}
