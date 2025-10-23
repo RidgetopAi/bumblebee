@@ -34,7 +34,7 @@ export function Preview({ content, scrollOffset }: PreviewProps) {
   return (
     <Box
       flexDirection="column"
-      height={availableHeight}
+      flexGrow={1}
       borderStyle="single"
       borderColor={bumblebeeTheme.current.yellowA}
     >
